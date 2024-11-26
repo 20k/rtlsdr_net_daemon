@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <thread>
 #include <chrono>
+#include <SFML/System/Sleep.hpp>
 
 std::atomic_int global_close{0};
 
@@ -80,17 +81,16 @@ struct device
 
 struct context
 {
-    rtlsdr_dev_t* dv = nullptr;
     sockaddr_storage whomst = {};
 };
 
 struct expiring_buffer
 {
     std::chrono::time_point<std::chrono::steady_clock> when;
-    std::vector<char> data;
+    std::vector<uint8_t> data;
     uint64_t id = 0;
 
-    bool expired()
+    bool expired() const
     {
         auto now = std::chrono::steady_clock::now();
 
@@ -105,7 +105,7 @@ struct global_queue
     std::vector<expiring_buffer> buffers;
     std::mutex mut;
 
-    void add_buffer(const std::vector<char>& data)
+    void add_buffer(const std::vector<uint8_t>& data)
     {
         std::lock_guard lock(mut);
 
@@ -136,19 +136,38 @@ struct global_queue
     }
 };
 
-void rtlsdr_callback(unsigned char* buf, uint32_t len, void* ctx)
-{
+global_queue gqueue;
 
+void pipe_data_into_queue(unsigned char* buf, uint32_t len, void* ctx)
+{
+    std::vector<uint8_t> data;
+    data.resize(len);
+
+    memcpy(data.data(), buf, len);
+
+    gqueue.add_buffer(data);
 }
 
 void async_thread(context* ctx)
 {
+    uint64_t last_id = gqueue.next_id;
+
     while(1)
     {
         if(global_close)
             break;
 
-        //rtlsdr_read_async(ctx->dv, )
+        auto to_write = gqueue.get_buffers_after(last_id);
+
+        if(to_write.size() > 0)
+        {
+            last_id = to_write.back().id;
+
+        }
+        else
+        {
+            sf::sleep(sf::milliseconds(1));
+        }
     }
 }
 
@@ -201,6 +220,11 @@ int main()
     device dev;
 
     dev.set_freq(1000000);
+
+    std::jthread out([&]()
+    {
+        rtlsdr_read_async(dev.v, pipe_data_into_queue, nullptr, 0, 0);
+    });
 
     while(1)
     {
@@ -257,21 +281,18 @@ int main()
         if(cmd == 0x0f)
         {
             context* ctx = new context;
-            ctx->dv = dev.v;
+            //ctx->dv = dev.v;
             ctx->whomst = from;
 
             std::jthread([](context* ctx)
             {
                 async_thread(ctx);
             }, ctx).detach();
-
-            //sockaddr_in* as_addr = (sockaddr_in*)&from;
-
-            //as_addr->
         }
     }
 
     global_close = 1;
+    rtlsdr_cancel_async(dev.v);
 
     return 0;
 }
