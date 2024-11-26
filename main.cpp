@@ -6,6 +6,8 @@
 #include <assert.h>
 #include <thread>
 
+std::atomic_int global_close{0};
+
 struct device
 {
     rtlsdr_dev_t* v = nullptr;
@@ -90,7 +92,8 @@ void async_thread(context* ctx)
 {
     while(1)
     {
-
+        if(global_close)
+            break;
     }
 }
 
@@ -205,13 +208,15 @@ int main()
             std::jthread([](context* ctx)
             {
                 async_thread(ctx);
-            }, ctx);
+            }, ctx).detach();
 
             //sockaddr_in* as_addr = (sockaddr_in*)&from;
 
             //as_addr->
         }
     }
+
+    global_close = 1;
 
     return 0;
 }
