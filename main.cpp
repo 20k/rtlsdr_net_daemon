@@ -2,6 +2,77 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <vector>
+#include <rtl-sdr.h>
+#include <assert.h>
+
+struct device
+{
+    rtlsdr_dev_t* v = nullptr;
+    std::vector<int> gains_intl;
+
+    device()
+    {
+        assert(rtlsdr_open(&v, 0) == 0);
+
+        rtlsdr_set_sample_rate(v, 2400000);
+
+        int gains[128] = {};
+        int ngain = rtlsdr_get_tuner_gains(v, gains);
+
+        for(int i=0; i < ngain; i++)
+        {
+            printf("%i ", gains[i]);
+        }
+
+        gains_intl.resize(ngain);
+
+        for(int i=0; i < ngain && i < 128; i++)
+            gains_intl[i] = gains[i];
+
+        rtlsdr_set_tuner_gain(v, gains[0]);
+
+        rtlsdr_reset_buffer(v);
+    }
+
+    ~device()
+    {
+        assert(rtlsdr_close(v) == 0);
+    }
+
+    std::vector<int> get_gains()
+    {
+        return gains_intl;
+    }
+
+    void set_gain(int gain)
+    {
+        for(auto& i : gains_intl)
+        {
+            if(i == gain)
+            {
+                rtlsdr_set_tuner_gain(v, gain);
+                return;
+            }
+        }
+
+        return;
+    }
+
+    void set_bandwidth(uint32_t width)
+    {
+        rtlsdr_set_tuner_bandwidth(v, width);
+    }
+
+    void set_freq(uint32_t hz)
+    {
+        rtlsdr_set_center_freq(v, hz);
+    }
+
+    uint32_t get_freq()
+    {
+        return rtlsdr_get_center_freq(v);
+    }
+};
 
 int main()
 {
@@ -57,6 +128,10 @@ int main()
         return 1;
     }*/
 
+    device dev;
+
+    dev.set_freq(1000000);
+
     while(1)
     {
         char data[1024] = {};
@@ -72,6 +147,42 @@ int main()
             printf("Error receiving from anyone\n");
             continue;
         }
+
+        if(numbytes < sizeof(char) + sizeof(int))
+            continue;
+
+        unsigned char cmd = data[0];
+        unsigned int param = 0;
+        memcpy((void*)&param, (void*)&data[1], sizeof(int));
+
+        if(cmd == 0x01)
+            rtlsdr_set_center_freq(dev.v, param);
+        if(cmd == 0x02)
+            rtlsdr_set_sample_rate(dev.v, param);
+        if(cmd == 0x03)
+            rtlsdr_set_tuner_gain_mode(dev.v, param);
+        if(cmd == 0x04)
+            rtlsdr_set_tuner_gain(dev.v, param);
+        if(cmd == 0x05)
+            rtlsdr_set_freq_correction(dev.v, param);
+        if(cmd == 0x06)
+        {}
+        if(cmd == 0x07)
+            rtlsdr_set_testmode(dev.v, param);
+        if(cmd == 0x08)
+            rtlsdr_set_agc_mode(dev.v, param);
+        if(cmd == 0x09)
+            rtlsdr_set_direct_sampling(dev.v, param);
+        if(cmd == 0x0a)
+            rtlsdr_set_offset_tuning(dev.v, param);
+        if(cmd == 0x0b)
+            rtlsdr_set_xtal_freq(dev.v, param, 0);
+        if(cmd == 0x0c)
+            rtlsdr_set_xtal_freq(dev.v, 0, param);
+        if(cmd == 0x0d)
+            dev.set_gain(param);
+        if(cmd == 0x0e)
+            rtlsdr_set_bias_tee(dev.v, param);
     }
 
     return 0;
