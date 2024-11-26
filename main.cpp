@@ -82,6 +82,7 @@ struct device
 struct context
 {
     sockaddr_storage whomst = {};
+    SOCKET sock = {};
 };
 
 struct expiring_buffer
@@ -148,6 +149,23 @@ void pipe_data_into_queue(unsigned char* buf, uint32_t len, void* ctx)
     gqueue.add_buffer(data);
 }
 
+bool sendall(SOCKET s, sockaddr_storage addr, const std::vector<char>& data)
+{
+    int64_t bytes_sent = 0;
+
+    while(bytes_sent < data.size())
+    {
+        int count = sendto(s, data.data() + bytes_sent, data.size() - bytes_sent, 0, (sockaddr*)&addr, sizeof(addr));
+
+        if(count == -1)
+            return true;
+
+        bytes_sent += count;
+    }
+
+    return false;
+}
+
 void async_thread(context* ctx)
 {
     uint64_t last_id = gqueue.next_id;
@@ -163,6 +181,19 @@ void async_thread(context* ctx)
         {
             last_id = to_write.back().id;
 
+            for(expiring_buffer& buf : to_write)
+            {
+                int chunk_size = 1024;
+
+                for(int i=0; i < buf.data.size(); i += chunk_size)
+                {
+                    int fin = std::min(i + chunk_size, (int)buf.data.size());
+
+                    std::vector<char> ldat(buf.data.begin() + i, buf.data.begin() + fin);
+
+                    sendall(ctx->sock, ctx->whomst, ldat);
+                }
+            }
         }
         else
         {
@@ -283,6 +314,7 @@ int main()
             context* ctx = new context;
             //ctx->dv = dev.v;
             ctx->whomst = from;
+            ctx->sock = listen_sock;
 
             std::jthread([](context* ctx)
             {
