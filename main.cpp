@@ -191,7 +191,8 @@ void async_thread(context* ctx)
 
                     std::vector<char> ldat(buf.data.begin() + i, buf.data.begin() + fin);
 
-                    sendall(ctx->sock, ctx->whomst, ldat);
+                    if(sendall(ctx->sock, ctx->whomst, ldat))
+                        return;
                 }
             }
         }
