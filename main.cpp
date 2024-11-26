@@ -49,13 +49,13 @@ int main()
         return 1;
     }
 
-    if(listen(listen_sock, SOMAXCONN) == SOCKET_ERROR)
+    /*if(listen(listen_sock, SOMAXCONN) == SOCKET_ERROR)
     {
         printf("Listen failed with error: %ld\n", WSAGetLastError());
         closesocket(listen_sock);
         WSACleanup();
         return 1;
-    }
+    }*/
 
     while(1)
     {
@@ -67,7 +67,7 @@ int main()
 
         int64_t numbytes = 0;
 
-        if(numbytes = recvfrom(listen_sock, data, max_data - 1, 0, (sockaddr*)&from, &sock_size); numbytes == -1)
+        if(numbytes = recvfrom(listen_sock, data, max_data, 0, (sockaddr*)&from, &sock_size); numbytes == -1)
         {
             printf("Error receiving from anyone\n");
             continue;
