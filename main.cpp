@@ -5,6 +5,7 @@
 #include <rtl-sdr.h>
 #include <assert.h>
 #include <thread>
+#include <chrono>
 
 std::atomic_int global_close{0};
 
@@ -83,6 +84,58 @@ struct context
     sockaddr_storage whomst = {};
 };
 
+struct expiring_buffer
+{
+    std::chrono::time_point<std::chrono::steady_clock> when;
+    std::vector<char> data;
+    uint64_t id = 0;
+
+    bool expired()
+    {
+        auto now = std::chrono::steady_clock::now();
+
+        return std::chrono::duration_cast<std::chrono::milliseconds>(now - when).count() > 2000;
+    }
+};
+
+struct global_queue
+{
+    static inline std::atomic_uint64_t next_id = 0;
+
+    std::vector<expiring_buffer> buffers;
+    std::mutex mut;
+
+    void add_buffer(const std::vector<char>& data)
+    {
+        std::lock_guard lock(mut);
+
+        while(buffers.size() > 0 && buffers.front().expired())
+            buffers.erase(buffers.begin());
+
+        expiring_buffer exp;
+        exp.when = std::chrono::steady_clock::now();
+        exp.data = data;
+        exp.id = next_id++;
+
+        buffers.push_back(std::move(exp));
+    }
+
+    std::vector<expiring_buffer> get_buffers_after(uint64_t id)
+    {
+        std::lock_guard lock(mut);
+
+        std::vector<expiring_buffer> ret;
+
+        for(auto& i : buffers)
+        {
+            if(i.id >= id)
+                ret.push_back(i);
+        }
+
+        return ret;
+    }
+};
+
 void rtlsdr_callback(unsigned char* buf, uint32_t len, void* ctx)
 {
 
@@ -94,6 +147,8 @@ void async_thread(context* ctx)
     {
         if(global_close)
             break;
+
+        //rtlsdr_read_async(ctx->dv, )
     }
 }
 
