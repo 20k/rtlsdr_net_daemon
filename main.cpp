@@ -4,6 +4,7 @@
 #include <vector>
 #include <rtl-sdr.h>
 #include <assert.h>
+#include <thread>
 
 struct device
 {
@@ -74,6 +75,25 @@ struct device
     }
 };
 
+struct context
+{
+    rtlsdr_dev_t* dv = nullptr;
+    sockaddr_storage whomst = {};
+};
+
+void rtlsdr_callback(unsigned char* buf, uint32_t len, void* ctx)
+{
+
+}
+
+void async_thread(context* ctx)
+{
+    while(1)
+    {
+
+    }
+}
+
 int main()
 {
     WSADATA wsa_data;
@@ -119,14 +139,6 @@ int main()
         WSACleanup();
         return 1;
     }
-
-    /*if(listen(listen_sock, SOMAXCONN) == SOCKET_ERROR)
-    {
-        printf("Listen failed with error: %ld\n", WSAGetLastError());
-        closesocket(listen_sock);
-        WSACleanup();
-        return 1;
-    }*/
 
     device dev;
 
@@ -183,6 +195,22 @@ int main()
             dev.set_gain(param);
         if(cmd == 0x0e)
             rtlsdr_set_bias_tee(dev.v, param);
+
+        if(cmd == 0x0f)
+        {
+            context* ctx = new context;
+            ctx->dv = dev.v;
+            ctx->whomst = from;
+
+            std::jthread([](context* ctx)
+            {
+                async_thread(ctx);
+            }, ctx);
+
+            //sockaddr_in* as_addr = (sockaddr_in*)&from;
+
+            //as_addr->
+        }
     }
 
     return 0;
