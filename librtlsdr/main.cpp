@@ -200,11 +200,17 @@ DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
     data_sock = new sock("6960");
     query_sock = new sock("6961");
 
+    {
+        std::vector<char> write;
+        write.push_back(0x0f);
+        data_sock->write(write);
+    }
+
     dev[0] = (rtlsdr_dev_t*)data_storage;
     return 0;
 }
 
-DLL_EXPORT int rtlsdr_close(rtlsdr_dev_t **dev, uint32_t index)
+DLL_EXPORT int rtlsdr_close(rtlsdr_dev_t *dev)
 {
     return 0;
 }
@@ -510,25 +516,7 @@ std::atomic_int cancelled{0};
 
 DLL_EXPORT int rtlsdr_wait_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx)
 {
-    assert(data_sock);
-
-    cancelled = 0;
-
-    while(!cancelled)
-    {
-        auto data = data_sock->read();
-
-        if(data.size() > 0)
-        {
-            cb((unsigned char*)data.data(), (uint32_t)data.size(), ctx);
-        }
-        else
-        {
-            sf::sleep(sf::milliseconds(1));
-        }
-    }
-
-    return 0;
+    return rtlsdr_read_async(dev, cb, ctx, 0, 0);
 }
 
 DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len)
@@ -537,17 +525,24 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
 
     cancelled = 0;
 
+    std::vector<unsigned char> next_data;
+    int pop_size = 65536/4;
+
     while(!cancelled)
     {
         auto data = data_sock->read();
 
-        if(data.size() > 0)
+        next_data.insert(next_data.end(), data.begin(), data.end());
+
+        if((int)next_data.size() >= pop_size)
         {
-            cb((unsigned char*)data.data(), (uint32_t)data.size(), ctx);
+            cb((unsigned char*)next_data.data(), (uint32_t)next_data.size(), ctx);
+
+            next_data.clear();
         }
         else
         {
-            sf::sleep(sf::milliseconds(1));
+            //sf::sleep(sf::milliseconds(1));
         }
     }
 

@@ -183,21 +183,25 @@ void async_thread(context* ctx)
 
             for(expiring_buffer& buf : to_write)
             {
-                int chunk_size = 1024;
+                int chunk_size = 2048;
 
                 for(int i=0; i < buf.data.size(); i += chunk_size)
                 {
                     int fin = std::min(i + chunk_size, (int)buf.data.size());
 
-                    std::vector<char> ldat(buf.data.begin() + i, buf.data.begin() + fin);
+                    int num = sendto(ctx->sock, (const char*)(buf.data.data() + i), fin - i, 0, (sockaddr*)&ctx->whomst, sizeof(sockaddr_storage));
 
-                    if(sendall(ctx->sock, ctx->whomst, ldat))
+                    if(num == -1)
                         return;
+
+                    assert(num == (fin - i));
                 }
             }
         }
         else
         {
+            printf("Sleep\n");
+
             sf::sleep(sf::milliseconds(1));
         }
     }
@@ -347,6 +351,8 @@ int main()
                 continue;
 
             unsigned char cmd = data[0];
+
+            printf("Qcmd %i\n", cmd);
 
             if(cmd == 0x10)
             {
