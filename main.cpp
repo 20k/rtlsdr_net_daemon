@@ -237,7 +237,7 @@ struct sock
 
         if(listen_sock == INVALID_SOCKET)
         {
-            printf("Error at socket(): %ld\n", WSAGetLastError());
+            printf("Error at socket(): %d\n", WSAGetLastError());
             freeaddrinfo(addr);
             WSACleanup();
             assert(false);
@@ -446,6 +446,8 @@ int main()
         unsigned int param = 0;
         memcpy((void*)&param, (void*)&data[1], sizeof(int));
 
+        printf("Got cmd %i\n", cmd);
+
         if(cmd == 0x01)
             rtlsdr_set_center_freq(dev.v, param);
         if(cmd == 0x02)
@@ -489,7 +491,7 @@ int main()
         }
 
         if(cmd == 0x21)
-            rtlsdr_set_tuner_bandwidth(dev..v, param);
+            rtlsdr_set_tuner_bandwidth(dev.v, param);
     }
 
     global_close = 1;

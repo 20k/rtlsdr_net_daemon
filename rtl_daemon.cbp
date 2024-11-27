@@ -26,6 +26,7 @@
 			</Target>
 		</Build>
 		<Compiler>
+			<Add option="-Wall" />
 			<Add option="-std=c++23" />
 			<Add directory="deps/rtl-sdr/include" />
 			<Add directory="C:/msys64/ucrt64/include/libusb-1.0" />
