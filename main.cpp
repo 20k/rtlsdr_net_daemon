@@ -203,23 +203,6 @@ void async_thread(context* ctx)
     }
 }
 
-bool sendall(SOCKET s, addrinfo* ptr, const std::vector<char>& data)
-{
-    int64_t bytes_sent = 0;
-
-    while(bytes_sent < data.size())
-    {
-        int count = sendto(s, data.data() + bytes_sent, data.size() - bytes_sent, 0, ptr->ai_addr, ptr->ai_addrlen);
-
-        if(count == -1)
-            return true;
-
-        bytes_sent += count;
-    }
-
-    return false;
-}
-
 struct sock
 {
     SOCKET listen_sock = INVALID_SOCKET;
@@ -292,6 +275,11 @@ struct sock
 
         return {data, from};
     }
+
+    void send_all(sockaddr_storage to, const std::vector<char>& data)
+    {
+        sendall(listen_sock, to, data);
+    }
 };
 
 int main()
@@ -317,7 +305,12 @@ int main()
             if(data.size() < 1)
                 continue;
 
+            unsigned char cmd = data[0];
 
+            if(cmd == 0x10)
+            {
+
+            }
         }
 
     }).detach();
