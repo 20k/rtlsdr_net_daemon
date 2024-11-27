@@ -442,6 +442,43 @@ int main()
 
                 info.send_all(from, freq);
             }
+
+            if(cmd == 0x22 && data.size() >= 5)
+            {
+                uint32_t idx = 0;
+                memcpy(&idx, data.data() + 1, sizeof(idx));
+
+                char m[257] = {};
+                char p[257] = {};
+                char s[257] = {};
+
+                rtlsdr_get_device_usb_strings(idx, m, p, s);
+
+                std::string lm(m);
+                std::string lp(p);
+                std::string ls(s);
+
+                std::string out = lm + "\0" + lp + "\0" + ls;
+
+                info.send_all(from, out);
+            }
+
+            if(cmd == 0x23)
+            {
+                char m[257] = {};
+                char p[257] = {};
+                char s[257] = {};
+
+                rtlsdr_get_usb_strings(dev.v, m, p, s);
+
+                std::string lm(m);
+                std::string lp(p);
+                std::string ls(s);
+
+                std::string out = lm + "\0" + lp + "\0" + ls;
+
+                info.send_all(from, out);
+            }
         }
 
     }).detach();

@@ -11,6 +11,7 @@
 #include <optional>
 #include <atomic>
 #include <SFML/System/Sleep.hpp>
+#include <ranges>
 
 #if 0
 // a sample exported function
@@ -225,6 +226,43 @@ int DLL_EXPORT rtlsdr_get_device_usb_strings(uint32_t index,
 					     char* p,
 					     char* s)
 {
+    std::vector<char> out;
+    out.push_back(0x22);
+    add(out, index);
+
+    for(int i=0; i < 256; i++)
+        m[i] = 0;
+    for(int i=0; i < 256; i++)
+        p[i] = 0;
+    for(int i=0; i < 256; i++)
+        s[i] = 0;
+
+    get_query_sock()->write(out);
+
+    std::vector<char> data = get_query_sock()->read();
+
+    std::string as_str(data.begin(), data.end());
+
+    int which_word = 0;
+
+    for(const auto word : std::views::split(as_str, '\0'))
+    {
+        std::string_view sword(word);
+
+        assert(sword.size() < 256);
+
+        if(which_word == 0)
+            memcpy(m, sword.data(), sword.size());
+
+        if(which_word == 1)
+            memcpy(p, sword.data(), sword.size());
+
+        if(which_word == 2)
+            memcpy(s, sword.data(), sword.size());
+
+        which_word++;
+    }
+
     return 0;
 }
 
@@ -237,14 +275,6 @@ char data_storage[1024] = {};
 
 DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
 {
-    /*assert(dev);
-
-    {
-        std::vector<char> write;
-        write.push_back(0x0f);
-        get_data_sock()->write(write);
-    }*/
-
     dev[0] = (rtlsdr_dev_t*)data_storage;
     return 0;
 }
@@ -284,6 +314,39 @@ DLL_EXPORT int rtlsdr_get_xtal_freq(rtlsdr_dev_t *dev, uint32_t *rtl_freq, uint3
 
 DLL_EXPORT int rtlsdr_get_usb_strings(rtlsdr_dev_t *dev, char* m, char* p, char* s)
 {
+    for(int i=0; i < 256; i++)
+        m[i] = 0;
+    for(int i=0; i < 256; i++)
+        p[i] = 0;
+    for(int i=0; i < 256; i++)
+        s[i] = 0;
+
+    auto data = query_read(0x23);
+
+    std::string as_str(data.begin(), data.end());
+
+    int which_word = 0;
+
+    for(const auto word : std::views::split(as_str, '\0'))
+    {
+        std::string_view sword(word);
+
+        assert(sword.size() < 256);
+
+        if(which_word == 0)
+            memcpy(m, sword.data(), sword.size());
+
+        if(which_word == 1)
+            memcpy(p, sword.data(), sword.size());
+
+        if(which_word == 2)
+            memcpy(s, sword.data(), sword.size());
+
+        which_word++;
+    }
+
+    return 0;
+
     return 0;
 }
 
