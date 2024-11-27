@@ -158,6 +158,31 @@ std::optional<T> read_pop(std::vector<char>& in)
     return ret;
 }
 
+void add(std::vector<char>& in, int v)
+{
+    auto len = in.size();
+
+    in.resize(in.size() + sizeof(int));
+
+    memcpy(in.data() + len, &v, sizeof(int));
+}
+
+void add(std::vector<char>& in, uint32_t v)
+{
+    auto len = in.size();
+
+    in.resize(in.size() + sizeof(v));
+
+    memcpy(in.data() + len, &v, sizeof(v));
+}
+
+void add(std::vector<char>& in, const std::vector<int> v)
+{
+    for(auto& i : v)
+        add(in, i);
+}
+
+
 sock* data_sock = nullptr;
 sock* query_sock = nullptr;
 
@@ -231,7 +256,12 @@ DLL_EXPORT int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 {
     assert(data_sock);
 
-    data_sock->write(freq);
+    std::vector<char> to_write;
+    to_write.push_back(0x01);
+
+    add(to_write, freq);
+
+    data_sock->write(to_write);
 
     return 0;
 }
@@ -245,6 +275,96 @@ DLL_EXPORT uint32_t rtlsdr_get_center_freq(rtlsdr_dev_t *dev)
     auto result = query_sock->read();
 
     return read_pop<uint32_t>(result).value();
+}
+
+DLL_EXPORT int rtlsdr_set_freq_correction(rtlsdr_dev_t *dev, int ppm)
+{
+    assert(data_sock);
+
+    std::vector<char> to_write;
+    to_write.push_back(0x05);
+    add(to_write, ppm);
+
+    data_sock->write(to_write);
+
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_get_freq_correction(rtlsdr_dev_t *dev)
+{
+    assert(query_sock);
+
+    query_sock->write({0x12});
+
+    auto result = data_sock->read();
+
+    return read_pop<int>(result).value();
+}
+
+DLL_EXPORT enum rtlsdr_tuner rtlsdr_get_tuner_type(rtlsdr_dev_t *dev)
+{
+    return RTLSDR_TUNER_R828D;
+}
+
+DLL_EXPORT int rtlsdr_get_tuner_gains(rtlsdr_dev_t *dev, int *gains)
+{
+    assert(query_sock);
+
+    query_sock->write({0x14});
+
+    auto result = query_sock->read();
+
+    uint32_t len = read_pop<uint32_t>(result).value();
+
+    if(gains)
+    {
+        for(int i=0; i < len; i++)
+        {
+            gains[i] = read_pop<int>(result).value();
+        }
+    }
+
+    return len;
+}
+
+DLL_EXPORT int rtlsdr_set_tuner_gain(rtlsdr_dev_t *dev, int gain)
+{
+    assert(data_sock);
+
+    std::vector<char> to_write;
+    to_write.push_back(0x04);
+    add(to_write, gain);
+
+    data_sock->write(to_write);
+
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_set_tuner_bandwidth(rtlsdr_dev_t *dev, uint32_t bw)
+{
+    assert(data_sock);
+
+    std::vector<char> to_write;
+    to_write.push_back(0x21);
+    add(to_write, bw);
+
+    data_sock->write(to_write);
+
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_get_tuner_gain(rtlsdr_dev_t *dev)
+{
+    assert(query_sock);
+
+    std::vector<char> to_write;
+    to_write.push_back(0x15);
+
+    query_sock->write(to_write);
+
+    auto data = query_sock->read();
+
+    return read_pop<int>(data).value();
 }
 
 extern "C" DLL_EXPORT BOOL APIENTRY DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)

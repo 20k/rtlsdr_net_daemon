@@ -487,6 +487,9 @@ int main()
                 async_thread(ctx);
             }, ctx).detach();
         }
+
+        if(cmd == 0x21)
+            rtlsdr_set_tuner_bandwidth(dev..v, param);
     }
 
     global_close = 1;
