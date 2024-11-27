@@ -20,29 +20,6 @@ void DLL_EXPORT SomeFunction(const LPCSTR sometext)
 }
 #endif
 
-uint32_t DLL_EXPORT rtlsdr_get_device_count(void)
-{
-    return 1;
-}
-
-const char* DLL_EXPORT rtlsdr_get_device_name(uint32_t index)
-{
-    return "UNIMPLEMENTED";
-}
-
-int DLL_EXPORT rtlsdr_get_device_usb_strings(uint32_t index,
-					     char* m,
-					     char* p,
-					     char* s)
-{
-    return 0;
-}
-
-int DLL_EXPORT rtlsdr_get_index_by_serial(const char* serial)
-{
-    return 0;
-}
-
 bool sendall(SOCKET s, addrinfo* ptr, const std::vector<char>& data)
 {
     int64_t bytes_sent = 0;
@@ -187,8 +164,74 @@ void add(std::vector<char>& in, const std::vector<int> v)
 }
 
 
-sock* data_sock = nullptr;
-sock* query_sock = nullptr;
+sock* data_sock2 = nullptr;
+sock* query_sock2 = nullptr;
+
+sock* get_data_sock()
+{
+    if(data_sock2 == nullptr)
+        data_sock2 = new sock("6960");
+
+    return data_sock2;
+}
+
+sock* get_query_sock()
+{
+    if(query_sock2 == nullptr)
+        query_sock2 = new sock("6961");
+
+    return query_sock2;
+}
+
+void data_write(char type, auto what)
+{
+    std::vector<char> data;
+    data.push_back(type);
+
+    add(data, what);
+
+    get_data_sock()->write(data);
+}
+
+std::vector<char> query_read(char type)
+{
+    get_query_sock()->write(std::vector<char>{type});
+
+    return get_query_sock()->read();
+}
+
+uint32_t DLL_EXPORT rtlsdr_get_device_count(void)
+{
+    return 1;
+}
+
+const char* DLL_EXPORT rtlsdr_get_device_name(uint32_t index)
+{
+    std::vector<char> out;
+    out.push_back(0x11);
+    add(out, index);
+
+    get_query_sock()->write(out);
+
+    auto data = get_query_sock()->read();
+
+    std::string* leaked = new std::string(data.begin(), data.end());
+
+    return leaked->c_str();
+}
+
+int DLL_EXPORT rtlsdr_get_device_usb_strings(uint32_t index,
+					     char* m,
+					     char* p,
+					     char* s)
+{
+    return 0;
+}
+
+int DLL_EXPORT rtlsdr_get_index_by_serial(const char* serial)
+{
+    return 0;
+}
 
 char data_storage[1024] = {};
 
@@ -196,16 +239,10 @@ DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
 {
     assert(dev);
 
-    assert(data_sock == nullptr);
-    assert(query_sock == nullptr);
-
-    data_sock = new sock("6960");
-    query_sock = new sock("6961");
-
     {
         std::vector<char> write;
         write.push_back(0x0f);
-        data_sock->write(write);
+        get_data_sock()->write(write);
     }
 
     dev[0] = (rtlsdr_dev_t*)data_storage;
@@ -224,11 +261,9 @@ DLL_EXPORT int rtlsdr_set_xtal_freq(rtlsdr_dev_t *dev, uint32_t rtl_freq, uint32
 
 DLL_EXPORT int rtlsdr_get_xtal_freq(rtlsdr_dev_t *dev, uint32_t *rtl_freq, uint32_t *tuner_freq)
 {
-    assert(query_sock);
+    get_query_sock()->write({0x19});
 
-    query_sock->write({0x19});
-
-    std::vector<char> read = query_sock->read();
+    std::vector<char> read = get_query_sock()->read();
 
     assert(read.size() == 8);
 
@@ -264,49 +299,28 @@ DLL_EXPORT int rtlsdr_read_eeprom(rtlsdr_dev_t *dev, uint8_t *data, uint8_t offs
 
 DLL_EXPORT int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 {
-    assert(data_sock);
-
-    std::vector<char> to_write;
-    to_write.push_back(0x01);
-
-    add(to_write, freq);
-
-    data_sock->write(to_write);
+    data_write(0x01, freq);
 
     return 0;
 }
 
 DLL_EXPORT uint32_t rtlsdr_get_center_freq(rtlsdr_dev_t *dev)
 {
-    assert(query_sock);
-
-    query_sock->write({0x20});
-
-    auto result = query_sock->read();
+    auto result = query_read(0x02);
 
     return read_pop<uint32_t>(result).value();
 }
 
 DLL_EXPORT int rtlsdr_set_freq_correction(rtlsdr_dev_t *dev, int ppm)
 {
-    assert(data_sock);
-
-    std::vector<char> to_write;
-    to_write.push_back(0x05);
-    add(to_write, ppm);
-
-    data_sock->write(to_write);
+    data_write(0x05, ppm);
 
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_get_freq_correction(rtlsdr_dev_t *dev)
 {
-    assert(query_sock);
-
-    query_sock->write({0x12});
-
-    auto result = data_sock->read();
+    auto result = query_read(0x12);
 
     return read_pop<int>(result).value();
 }
@@ -318,11 +332,9 @@ DLL_EXPORT enum rtlsdr_tuner rtlsdr_get_tuner_type(rtlsdr_dev_t *dev)
 
 DLL_EXPORT int rtlsdr_get_tuner_gains(rtlsdr_dev_t *dev, int *gains)
 {
-    assert(query_sock);
+    get_query_sock()->write({0x14});
 
-    query_sock->write({0x14});
-
-    auto result = query_sock->read();
+    auto result = get_query_sock()->read();
 
     uint32_t len = read_pop<uint32_t>(result).value();
 
@@ -339,40 +351,20 @@ DLL_EXPORT int rtlsdr_get_tuner_gains(rtlsdr_dev_t *dev, int *gains)
 
 DLL_EXPORT int rtlsdr_set_tuner_gain(rtlsdr_dev_t *dev, int gain)
 {
-    assert(data_sock);
-
-    std::vector<char> to_write;
-    to_write.push_back(0x04);
-    add(to_write, gain);
-
-    data_sock->write(to_write);
-
+    data_write(0x04, gain);
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_set_tuner_bandwidth(rtlsdr_dev_t *dev, uint32_t bw)
 {
-    assert(data_sock);
-
-    std::vector<char> to_write;
-    to_write.push_back(0x21);
-    add(to_write, bw);
-
-    data_sock->write(to_write);
+    data_write(0x21, bw);
 
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_get_tuner_gain(rtlsdr_dev_t *dev)
 {
-    assert(query_sock);
-
-    std::vector<char> to_write;
-    to_write.push_back(0x15);
-
-    query_sock->write(to_write);
-
-    auto data = query_sock->read();
+    auto data = query_read(0x15);
 
     return read_pop<int>(data).value();
 }
@@ -384,37 +376,21 @@ DLL_EXPORT int rtlsdr_set_tuner_if_gain(rtlsdr_dev_t *dev, int stage, int gain)
 
 DLL_EXPORT int rtlsdr_set_tuner_gain_mode(rtlsdr_dev_t *dev, int manual)
 {
-    assert(data_sock);
-
-    std::vector<char> to_write;
-    to_write.push_back(0x03);
-    add(to_write, manual);
-
-    data_sock->write(to_write);
+    data_write(0x03, manual);
 
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_set_sample_rate(rtlsdr_dev_t *dev, uint32_t rate)
 {
-    assert(data_sock);
-
-    std::vector<char> to_write;
-    to_write.push_back(0x02);
-    add(to_write, rate);
-
-    data_sock->write(to_write);
+    data_write(0x02, rate);
 
     return 0;
 }
 
 DLL_EXPORT uint32_t rtlsdr_get_sample_rate(rtlsdr_dev_t *dev)
 {
-    assert(query_sock);
-
-    query_sock->write({0x16});
-
-    auto data = query_sock->read();
+    auto data = query_read(0x16);
 
     return read_pop<uint32_t>(data).value();
 }
@@ -426,35 +402,9 @@ DLL_EXPORT int rtlsdr_set_testmode(rtlsdr_dev_t *dev, int on)
 
 DLL_EXPORT int rtlsdr_set_agc_mode(rtlsdr_dev_t *dev, int on)
 {
-    assert(data_sock);
-
-    std::vector<char> data;
-    data.push_back(0x08);
-    add(data, on);
-
-    data_sock->write(data);
+    data_write(0x08, on);
 
     return 0;
-}
-
-void data_write(char type, auto what)
-{
-    std::vector<char> data;
-    data.push_back(type);
-
-    add(data, what);
-
-    assert(data_sock);
-    data_sock->write(data);
-}
-
-std::vector<char> query_read(char type)
-{
-    assert(query_sock);
-
-    query_sock->write(std::vector<char>{type});
-
-    return query_sock->read();
 }
 
 DLL_EXPORT int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
@@ -488,15 +438,13 @@ DLL_EXPORT int rtlsdr_reset_buffer(rtlsdr_dev_t *dev)
 
 DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_read)
 {
-    assert(data_sock);
-
-    std::vector<char> data = data_sock->read();
+    std::vector<char> data = get_data_sock()->read();
 
     assert(buf);
 
     while((int)data.size() < len)
     {
-        auto next = data_sock->read();
+        auto next = get_data_sock()->read();
 
         data.insert(data.end(), next.begin(), next.end());
     }
@@ -523,8 +471,6 @@ DLL_EXPORT int rtlsdr_wait_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
 
 DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len)
 {
-    assert(data_sock);
-
     cancelled = 0;
 
     std::vector<unsigned char> next_data;
@@ -532,7 +478,7 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
 
     while(!cancelled)
     {
-        auto data = data_sock->read();
+        auto data = get_data_sock()->read();
 
         next_data.insert(next_data.end(), data.begin(), data.end());
 
