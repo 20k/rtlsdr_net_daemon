@@ -33,6 +33,9 @@
 			<Add option="-std=c++23" />
 			<Add directory="../deps/rtl-sdr/include" />
 		</Compiler>
+		<Linker>
+			<Add option="-lws2_32" />
+		</Linker>
 		<Unit filename="main.cpp" />
 		<Unit filename="main.h" />
 		<Extensions />
