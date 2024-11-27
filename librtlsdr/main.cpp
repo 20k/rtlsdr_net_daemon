@@ -226,16 +226,27 @@ int DLL_EXPORT rtlsdr_get_device_usb_strings(uint32_t index,
 					     char* p,
 					     char* s)
 {
-    std::vector<char> out;
+    /*std::vector<char> out;
     out.push_back(0x22);
     add(out, index);
 
-    for(int i=0; i < 256; i++)
-        m[i] = 0;
-    for(int i=0; i < 256; i++)
-        p[i] = 0;
-    for(int i=0; i < 256; i++)
-        s[i] = 0;
+    if(m)
+    {
+        for(int i=0; i < 256; i++)
+            m[i] = 0;
+    }
+
+    if(p)
+    {
+        for(int i=0; i < 256; i++)
+            p[i] = 0;
+    }
+
+    if(s)
+    {
+        for(int i=0; i < 256; i++)
+            s[i] = 0;
+    }
 
     get_query_sock()->write(out);
 
@@ -245,25 +256,27 @@ int DLL_EXPORT rtlsdr_get_device_usb_strings(uint32_t index,
 
     int which_word = 0;
 
-    for(const auto word : std::views::split(as_str, '\0'))
+    for(const auto word : std::views::split(as_str, "\0"))
     {
         std::string_view sword(word);
 
         assert(sword.size() < 256);
 
-        if(which_word == 0)
+        if(which_word == 0 && m)
             memcpy(m, sword.data(), sword.size());
 
-        if(which_word == 1)
+        if(which_word == 1 && p)
             memcpy(p, sword.data(), sword.size());
 
-        if(which_word == 2)
+        if(which_word == 2 && s)
             memcpy(s, sword.data(), sword.size());
 
         which_word++;
     }
 
-    return 0;
+    return 0;*/
+
+    return rtlsdr_get_usb_strings(nullptr, m, p, s);
 }
 
 int DLL_EXPORT rtlsdr_get_index_by_serial(const char* serial)
@@ -314,18 +327,49 @@ DLL_EXPORT int rtlsdr_get_xtal_freq(rtlsdr_dev_t *dev, uint32_t *rtl_freq, uint3
 
 DLL_EXPORT int rtlsdr_get_usb_strings(rtlsdr_dev_t *dev, char* m, char* p, char* s)
 {
-    for(int i=0; i < 256; i++)
-        m[i] = 0;
-    for(int i=0; i < 256; i++)
-        p[i] = 0;
-    for(int i=0; i < 256; i++)
-        s[i] = 0;
+    if(m)
+    {
+        for(int i=0; i < 256; i++)
+            m[i] = 0;
+    }
 
-    auto data = query_read(0x23);
+    if(p)
+    {
+        for(int i=0; i < 256; i++)
+            p[i] = 0;
+    }
 
-    std::string as_str(data.begin(), data.end());
+    if(s)
+    {
+        for(int i=0; i < 256; i++)
+            s[i] = 0;
+    }
 
-    int which_word = 0;
+    auto d_m = query_read(0x24);
+    auto d_p = query_read(0x25);
+    auto d_s = query_read(0x26);
+
+    std::string s_m(d_m.begin(), d_m.end());
+    std::string s_p(d_p.begin(), d_p.end());
+    std::string s_s(d_s.begin(), d_s.end());
+
+    if(s_m.size() > 255)
+        s_m.resize(255);
+
+    if(s_p.size() > 255)
+        s_p.resize(255);
+
+    if(s_s.size() > 255)
+        s_s.resize(255);
+
+    if(m)
+        memcpy(m, s_m.data(), s_m.size());
+    if(p)
+        memcpy(p, s_p.data(), s_p.size());
+    if(s)
+        memcpy(s, s_s.data(), s_s.size());
+
+    /*int which_word = 0;
 
     for(const auto word : std::views::split(as_str, '\0'))
     {
@@ -333,19 +377,19 @@ DLL_EXPORT int rtlsdr_get_usb_strings(rtlsdr_dev_t *dev, char* m, char* p, char*
 
         assert(sword.size() < 256);
 
-        if(which_word == 0)
+        if(which_word == 0 && m)
             memcpy(m, sword.data(), sword.size());
 
-        if(which_word == 1)
+        if(which_word == 1 && p)
             memcpy(p, sword.data(), sword.size());
 
-        if(which_word == 2)
+        if(which_word == 2 && s)
             memcpy(s, sword.data(), sword.size());
 
         which_word++;
     }
 
-    return 0;
+    return 0;*/
 
     return 0;
 }

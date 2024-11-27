@@ -443,6 +443,7 @@ int main()
                 info.send_all(from, freq);
             }
 
+            #if 0
             if(cmd == 0x22 && data.size() >= 5)
             {
                 uint32_t idx = 0;
@@ -452,13 +453,25 @@ int main()
                 char p[257] = {};
                 char s[257] = {};
 
-                rtlsdr_get_device_usb_strings(idx, m, p, s);
+                std::cout << "Idx? " << idx << std::endl;
+
+                rtlsdr_get_usb_strings(dev.v, m, p, s);
+
+                std::cout << "m " << m[0] << std::endl;
 
                 std::string lm(m);
                 std::string lp(p);
                 std::string ls(s);
 
+                std::cout << "lm " << lm << std::endl;
+                std::cout << "lp " << lp << std::endl;
+                std::cout << "ls " << ls << std::endl;
+
                 std::string out = lm + "\0" + lp + "\0" + ls;
+
+                std::cout << "SSize " << out.size() << std::endl;
+
+                std::cout << out << std::endl;
 
                 info.send_all(from, out);
             }
@@ -478,6 +491,29 @@ int main()
                 std::string out = lm + "\0" + lp + "\0" + ls;
 
                 info.send_all(from, out);
+            }
+            #endif // 0
+
+            if(cmd == 0x24)
+            {
+                char m[257] = {};
+                rtlsdr_get_usb_strings(dev.v, m, nullptr, nullptr);
+
+                info.send_all(from, std::string(m));
+            }
+            if(cmd == 0x25)
+            {
+                char p[257] = {};
+                rtlsdr_get_usb_strings(dev.v, nullptr, p, nullptr);
+
+                info.send_all(from, std::string(p));
+            }
+            if(cmd == 0x26)
+            {
+                char s[257] = {};
+                rtlsdr_get_usb_strings(dev.v, nullptr, nullptr, s);
+
+                info.send_all(from, std::string(s));
             }
         }
 
