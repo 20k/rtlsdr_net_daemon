@@ -58,7 +58,7 @@ bool sendall(SOCKET s, addrinfo* ptr, const std::vector<char>& data)
     return false;
 }
 
-std::vector<char> read(SOCKET s, sockaddr_storage* their_addr)
+std::vector<char> readall(SOCKET s, sockaddr_storage* their_addr)
 {
     std::vector<char> bufsize;
     bufsize.resize(10000);
@@ -126,6 +126,13 @@ struct sock
     void write(const std::vector<char>& data)
     {
         assert(!sendall(s, found_addr, data));
+    }
+
+    std::vector<char> read()
+    {
+        sockaddr_storage store;
+
+        return readall(s, &store);
     }
 };
 
