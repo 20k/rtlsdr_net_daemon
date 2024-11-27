@@ -58,6 +58,24 @@ bool sendall(SOCKET s, addrinfo* ptr, const std::vector<char>& data)
     return false;
 }
 
+std::vector<char> read(SOCKET s, sockaddr_storage* their_addr)
+{
+    std::vector<char> bufsize;
+    bufsize.resize(10000);
+
+    int from_len = sizeof(*their_addr);
+
+    int len = recvfrom(s, bufsize.data(), bufsize.size(), 0, (sockaddr*)their_addr, &from_len);
+
+    assert(len != -1);
+
+    assert(len <= bufsize.size());
+
+    bufsize.resize(len);
+
+    return bufsize;
+}
+
 struct sock
 {
     SOCKET s = INVALID_SOCKET;
