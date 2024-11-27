@@ -367,6 +367,120 @@ DLL_EXPORT int rtlsdr_get_tuner_gain(rtlsdr_dev_t *dev)
     return read_pop<int>(data).value();
 }
 
+DLL_EXPORT int rtlsdr_set_tuner_if_gain(rtlsdr_dev_t *dev, int stage, int gain)
+{
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_set_tuner_gain_mode(rtlsdr_dev_t *dev, int manual)
+{
+    assert(data_sock);
+
+    std::vector<char> to_write;
+    to_write.push_back(0x03);
+    add(to_write, manual);
+
+    data_sock->write(to_write);
+
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_set_sample_rate(rtlsdr_dev_t *dev, uint32_t rate)
+{
+    assert(data_sock);
+
+    std::vector<char> to_write;
+    to_write.push_back(0x02);
+    add(to_write, rate);
+
+    data_sock->write(to_write);
+
+    return 0;
+}
+
+DLL_EXPORT uint32_t rtlsdr_get_sample_rate(rtlsdr_dev_t *dev)
+{
+    assert(query_sock);
+
+    query_sock->write({0x16});
+
+    auto data = query_sock->read();
+
+    return read_pop<uint32_t>(data).value();
+}
+
+DLL_EXPORT int rtlsdr_set_testmode(rtlsdr_dev_t *dev, int on)
+{
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_set_agc_mode(rtlsdr_dev_t *dev, int on)
+{
+    assert(data_sock);
+
+    std::vector<char> data;
+    data.push_back(0x08);
+    add(data, on);
+
+    data_sock->write(data);
+
+    return 0;
+}
+
+void data_write(char type, auto what)
+{
+    std::vector<char> data;
+    data.push_back(type);
+
+    add(data, what);
+
+    assert(data_sock);
+    data_sock->write(data);
+}
+
+std::vector<char> query_read(char type)
+{
+    assert(query_sock);
+
+    query_sock->write({type});
+
+    return query_sock->read();
+}
+
+DLL_EXPORT int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
+{
+    data_write(0x09, on);
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_get_direct_sampling(rtlsdr_dev_t *dev)
+{
+    auto dat = query_read(0x17);
+    return read_pop<int>(dat).value();
+}
+
+DLL_EXPORT int rtlsdr_set_offset_tuning(rtlsdr_dev_t *dev, int on)
+{
+    data_write(0x0a, on);
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_get_offset_tuning(rtlsdr_dev_t *dev)
+{
+    auto dat = query_read(0x18);
+    return read_pop<int>(dat).value();
+}
+
+DLL_EXPORT int rtlsdr_reset_buffer(rtlsdr_dev_t *dev)
+{
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_read)
+{
+
+}
+
 extern "C" DLL_EXPORT BOOL APIENTRY DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
     switch (fdwReason)
