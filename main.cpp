@@ -306,6 +306,21 @@ int main()
     }).detach();
 
     sock sck("6960");
+    sock info("6961");
+
+    std::jthread([&]()
+    {
+        while(1)
+        {
+            auto [data, from] = info.read_all();
+
+            if(data.size() < 1)
+                continue;
+
+
+        }
+
+    }).detach();
 
     while(1)
     {
