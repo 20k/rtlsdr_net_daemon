@@ -136,6 +136,28 @@ struct sock
 };
 
 sock* data_sock = nullptr;
+sock* query_sock = nullptr;
+
+char data_storage[1024] = {};
+
+DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
+{
+    assert(dev);
+
+    assert(data_sock == nullptr);
+    assert(query_sock == nullptr);
+
+    data_sock = new sock("6960");
+    query_sock = new sock("6961");
+
+    dev[0] = (rtlsdr_dev_t*)data_storage;
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_close(rtlsdr_dev_t **dev, uint32_t index)
+{
+    return 0;
+}
 
 extern "C" DLL_EXPORT BOOL APIENTRY DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
