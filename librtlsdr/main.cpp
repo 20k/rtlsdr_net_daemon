@@ -127,6 +127,16 @@ struct sock
         assert(!sendall(s, found_addr, data));
     }
 
+    void write(unsigned int in)
+    {
+        std::vector<char> data;
+        data.resize(sizeof(in));
+
+        memcpy(data.data(), &in, sizeof(in));
+
+        return write(data);
+    }
+
     std::vector<char> read()
     {
         sockaddr_storage store;
@@ -185,6 +195,30 @@ DLL_EXPORT int rtlsdr_get_xtal_freq(rtlsdr_dev_t *dev, uint32_t *rtl_freq, uint3
 
     if(tuner_freq)
         *tuner_freq = freq2;
+
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_get_usb_strings(rtlsdr_dev_t *dev, char* m, char* p, char* s)
+{
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_write_eeprom(rtlsdr_dev_t *dev, uint8_t* data, uint8_t offset, uint16_t len)
+{
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_read_eeprom(rtlsdr_dev_t *dev, uint8_t *data, uint8_t offset, uint16_t len)
+{
+    return -3;
+}
+
+DLL_EXPORT int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
+{
+    assert(data_sock);
+
+    data_sock->write(freq);
 
     return 0;
 }
