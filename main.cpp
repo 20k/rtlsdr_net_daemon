@@ -266,6 +266,19 @@ struct sock
         #endif
     }
 
+    bool can_read()
+    {
+        fd_set reads;
+        FD_ZERO(&reads);
+        FD_SET(listen_sock, &reads);
+
+        struct timeval tv = {};
+
+        select(listen_sock+1, &reads, nullptr, nullptr, &tv);
+
+        return FD_ISSET(listen_sock, &reads);
+    }
+
     std::pair<std::vector<char>, sockaddr_storage> read_all()
     {
         std::vector<char> data;
@@ -521,61 +534,71 @@ int main()
 
     while(1)
     {
-        auto [data, from] = sck.read_all();
+        std::vector<std::pair<std::vector<char>, sockaddr_storage>> all_dat;
 
-        if(data.size() < sizeof(char) + sizeof(int))
-            continue;
-
-        unsigned char cmd = data[0];
-        unsigned int param = 0;
-        memcpy((void*)&param, (void*)&data[1], sizeof(int));
-
-        printf("Got cmd %i\n", cmd);
-
-        if(cmd == 0x01)
-            rtlsdr_set_center_freq(dev.v, param);
-        if(cmd == 0x02)
-            rtlsdr_set_sample_rate(dev.v, param);
-        if(cmd == 0x03)
-            rtlsdr_set_tuner_gain_mode(dev.v, param);
-        if(cmd == 0x04)
-            rtlsdr_set_tuner_gain(dev.v, param);
-        if(cmd == 0x05)
-            rtlsdr_set_freq_correction(dev.v, param);
-        if(cmd == 0x06)
-        {}
-        if(cmd == 0x07)
-            rtlsdr_set_testmode(dev.v, param);
-        if(cmd == 0x08)
-            rtlsdr_set_agc_mode(dev.v, param);
-        if(cmd == 0x09)
-            rtlsdr_set_direct_sampling(dev.v, param);
-        if(cmd == 0x0a)
-            rtlsdr_set_offset_tuning(dev.v, param);
-        if(cmd == 0x0b)
-            rtlsdr_set_xtal_freq(dev.v, param, 0);
-        if(cmd == 0x0c)
-            rtlsdr_set_xtal_freq(dev.v, 0, param);
-        if(cmd == 0x0d)
-            dev.set_gain(param);
-        if(cmd == 0x0e)
-            rtlsdr_set_bias_tee(dev.v, param);
-
-        if(cmd == 0x0f)
+        while(sck.can_read())
         {
-            context* ctx = new context;
-            //ctx->dv = dev.v;
-            ctx->whomst = from;
-            ctx->sock = sck.listen_sock;
-
-            std::jthread([](context* ctx)
-            {
-                async_thread(ctx);
-            }, ctx).detach();
+            all_dat.push_back(sck.read_all());
         }
 
-        if(cmd == 0x21)
-            rtlsdr_set_tuner_bandwidth(dev.v, param);
+        //auto [data, from] = sck.read_all();
+
+        for(auto& [data, from] : all_dat)
+        {
+            if(data.size() < sizeof(char) + sizeof(int))
+                continue;
+
+            unsigned char cmd = data[0];
+            unsigned int param = 0;
+            memcpy((void*)&param, (void*)&data[1], sizeof(int));
+
+            printf("Got cmd %i\n", cmd);
+
+            if(cmd == 0x01)
+                rtlsdr_set_center_freq(dev.v, param);
+            if(cmd == 0x02)
+                rtlsdr_set_sample_rate(dev.v, param);
+            if(cmd == 0x03)
+                rtlsdr_set_tuner_gain_mode(dev.v, param);
+            if(cmd == 0x04)
+                rtlsdr_set_tuner_gain(dev.v, param);
+            if(cmd == 0x05)
+                rtlsdr_set_freq_correction(dev.v, param);
+            if(cmd == 0x06)
+            {}
+            if(cmd == 0x07)
+                rtlsdr_set_testmode(dev.v, param);
+            if(cmd == 0x08)
+                rtlsdr_set_agc_mode(dev.v, param);
+            if(cmd == 0x09)
+                rtlsdr_set_direct_sampling(dev.v, param);
+            if(cmd == 0x0a)
+                rtlsdr_set_offset_tuning(dev.v, param);
+            if(cmd == 0x0b)
+                rtlsdr_set_xtal_freq(dev.v, param, 0);
+            if(cmd == 0x0c)
+                rtlsdr_set_xtal_freq(dev.v, 0, param);
+            if(cmd == 0x0d)
+                dev.set_gain(param);
+            if(cmd == 0x0e)
+                rtlsdr_set_bias_tee(dev.v, param);
+
+            if(cmd == 0x0f)
+            {
+                context* ctx = new context;
+                //ctx->dv = dev.v;
+                ctx->whomst = from;
+                ctx->sock = sck.listen_sock;
+
+                std::jthread([](context* ctx)
+                {
+                    async_thread(ctx);
+                }, ctx).detach();
+            }
+
+            if(cmd == 0x21)
+                rtlsdr_set_tuner_bandwidth(dev.v, param);
+        }
     }
 
     global_close = 1;
