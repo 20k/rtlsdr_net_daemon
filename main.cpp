@@ -308,6 +308,15 @@ void add(std::vector<char>& in, int v)
     memcpy(in.data() + len, &v, sizeof(int));
 }
 
+void add(std::vector<char>& in, uint32_t v)
+{
+    auto len = in.size();
+
+    in.resize(in.size() + sizeof(v));
+
+    memcpy(in.data() + len, &v, sizeof(v));
+}
+
 void add(std::vector<char>& in, const std::vector<int> v)
 {
     for(auto& i : v)
@@ -401,6 +410,19 @@ int main()
                 uint32_t t = rtlsdr_get_offset_tuning(dev.v);
 
                 info.send_all(from, t);
+            }
+
+            if(cmd == 0x19)
+            {
+                uint32_t freq1 = {};
+                uint32_t freq2 = {};
+                rtlsdr_get_xtal_freq(dev.v, &freq1, &freq2);
+
+                std::vector<char> dat;
+                add(dat, freq1);
+                add(dat, freq2);
+
+                info.send_all(from, dat);
             }
         }
 

@@ -159,6 +159,36 @@ DLL_EXPORT int rtlsdr_close(rtlsdr_dev_t **dev, uint32_t index)
     return 0;
 }
 
+DLL_EXPORT int rtlsdr_set_xtal_freq(rtlsdr_dev_t *dev, uint32_t rtl_freq, uint32_t tuner_freq)
+{
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_get_xtal_freq(rtlsdr_dev_t *dev, uint32_t *rtl_freq, uint32_t *tuner_freq)
+{
+    assert(query_sock);
+
+    query_sock->write({0x19});
+
+    std::vector<char> read = query_sock->read();
+
+    assert(read.size() == 8);
+
+    uint32_t freq1 = {};
+    uint32_t freq2 = {};
+
+    memcpy(&freq1, read.data(), sizeof(uint32_t));
+    memcpy(&freq2, read.data() + sizeof(uint32_t), sizeof(uint32_t));
+
+    if(rtl_freq)
+        *rtl_freq = freq1;
+
+    if(tuner_freq)
+        *tuner_freq = freq2;
+
+    return 0;
+}
+
 extern "C" DLL_EXPORT BOOL APIENTRY DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
     switch (fdwReason)
