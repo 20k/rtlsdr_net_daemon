@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <atomic>
+#include <SFML/System/Sleep.hpp>
 
 #if 0
 // a sample exported function
@@ -501,6 +503,71 @@ DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_re
         *n_read = data.size();
 
     memcpy(buf, data.data(), len);
+    return 0;
+}
+
+std::atomic_int cancelled{0};
+
+DLL_EXPORT int rtlsdr_wait_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx)
+{
+    assert(data_sock);
+
+    cancelled = 0;
+
+    while(!cancelled)
+    {
+        auto data = data_sock->read();
+
+        if(data.size() > 0)
+        {
+            cb((unsigned char*)data.data(), (uint32_t)data.size(), ctx);
+        }
+        else
+        {
+            sf::sleep(sf::milliseconds(1));
+        }
+    }
+
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len)
+{
+    assert(data_sock);
+
+    cancelled = 0;
+
+    while(!cancelled)
+    {
+        auto data = data_sock->read();
+
+        if(data.size() > 0)
+        {
+            cb((unsigned char*)data.data(), (uint32_t)data.size(), ctx);
+        }
+        else
+        {
+            sf::sleep(sf::milliseconds(1));
+        }
+    }
+
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_cancel_async(rtlsdr_dev_t *dev)
+{
+    cancelled = 1;
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on)
+{
+    data_write(0x0e, on);
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_set_bias_tee_gpio(rtlsdr_dev_t *dev, int gpio, int on)
+{
     return 0;
 }
 
