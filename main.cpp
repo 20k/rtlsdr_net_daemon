@@ -91,11 +91,9 @@ struct expiring_buffer
     std::vector<uint8_t> data;
     uint64_t id = 0;
 
-    bool expired() const
+    bool expired(uint64_t c_id) const
     {
-        auto now = std::chrono::steady_clock::now();
-
-        return std::chrono::duration_cast<std::chrono::milliseconds>(now - when).count() > 2000;
+        return (c_id - id) > 1024;
     }
 };
 
@@ -106,16 +104,15 @@ struct global_queue
     std::vector<expiring_buffer> buffers;
     std::mutex mut;
 
-    void add_buffer(const std::vector<uint8_t>& data)
+    void add_buffer(std::vector<uint8_t>&& data)
     {
         std::lock_guard lock(mut);
 
-        while(buffers.size() > 0 && buffers.front().expired())
+        while(buffers.size() > 0 && buffers.front().expired(next_id))
             buffers.erase(buffers.begin());
 
         expiring_buffer exp;
-        exp.when = std::chrono::steady_clock::now();
-        exp.data = data;
+        exp.data = std::move(data);
         exp.id = next_id++;
 
         buffers.push_back(std::move(exp));
@@ -146,7 +143,7 @@ void pipe_data_into_queue(unsigned char* buf, uint32_t len, void* ctx)
 
     memcpy(data.data(), buf, len);
 
-    gqueue.add_buffer(data);
+    gqueue.add_buffer(std::move(data));
 }
 
 bool sendall(SOCKET s, sockaddr_storage addr, const std::vector<char>& data)
@@ -179,11 +176,13 @@ void async_thread(context* ctx)
 
         if(to_write.size() > 0)
         {
-            last_id = to_write.back().id;
+            last_id = to_write.back().id + 1;
+
+            //printf("Bufs %li\n", to_write.size());
 
             for(expiring_buffer& buf : to_write)
             {
-                int chunk_size = 2048;
+                int chunk_size = 1024;
 
                 for(int i=0; i < buf.data.size(); i += chunk_size)
                 {
@@ -200,8 +199,6 @@ void async_thread(context* ctx)
         }
         else
         {
-            printf("Sleep\n");
-
             sf::sleep(sf::milliseconds(1));
         }
     }
@@ -248,8 +245,10 @@ struct sock
         }
 
         int yes = 1;
+        int size = 1024 * 1024 * 5;
 
         setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
+        setsockopt(listen_sock, SOL_SOCKET, SO_RCVBUF, (const char*)&size, sizeof(int));
 
         if(auto result = bind(listen_sock, addr->ai_addr, (int)addr->ai_addrlen); result == SOCKET_ERROR)
         {

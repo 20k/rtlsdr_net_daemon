@@ -118,6 +118,8 @@ struct sock
             }
 
             setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
+            int size = 1024 * 1024 * 5;
+            setsockopt(s, SOL_SOCKET, SO_RCVBUF, (const char*)&size, sizeof(int));
 
             break;
         }
