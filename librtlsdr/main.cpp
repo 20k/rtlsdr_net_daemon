@@ -40,7 +40,6 @@ int DLL_EXPORT rtlsdr_get_index_by_serial(const char* serial)
     return 0;
 }
 
-
 bool sendall(SOCKET s, addrinfo* ptr, const std::vector<char>& data)
 {
     int64_t bytes_sent = 0;

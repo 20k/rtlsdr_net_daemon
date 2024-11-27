@@ -240,6 +240,10 @@ int main()
         return 1;
     }
 
+    int yes = 1;
+
+    setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
+
     if(auto result = bind(listen_sock, addr->ai_addr, (int)addr->ai_addrlen); result == SOCKET_ERROR)
     {
         printf("bind failed with error: %d\n", WSAGetLastError());
