@@ -135,6 +135,8 @@ struct sock
     }
 };
 
+sock* data_sock = nullptr;
+
 extern "C" DLL_EXPORT BOOL APIENTRY DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
     switch (fdwReason)

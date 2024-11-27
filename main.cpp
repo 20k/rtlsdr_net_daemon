@@ -203,82 +203,115 @@ void async_thread(context* ctx)
     }
 }
 
-int main()
+bool sendall(SOCKET s, addrinfo* ptr, const std::vector<char>& data)
 {
-    WSADATA wsa_data;
+    int64_t bytes_sent = 0;
 
-    if(auto result = WSAStartup(MAKEWORD(2,2), &wsa_data); result != 0)
+    while(bytes_sent < data.size())
     {
-        printf("WSAStartup failed: %d\n", result);
-        return 1;
+        int count = sendto(s, data.data() + bytes_sent, data.size() - bytes_sent, 0, ptr->ai_addr, ptr->ai_addrlen);
+
+        if(count == -1)
+            return true;
+
+        bytes_sent += count;
     }
 
-    addrinfo hints = {};
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_protocol = IPPROTO_UDP;
-    hints.ai_flags = AI_PASSIVE;
+    return false;
+}
 
-    addrinfo* addr = nullptr;
-
-    if(auto result = getaddrinfo(nullptr, "6960", &hints, &addr); result != 0)
-    {
-        printf("getaddrinfo failed: %d\n", result);
-        WSACleanup();
-        return 1;
-    }
-
+struct sock
+{
     SOCKET listen_sock = INVALID_SOCKET;
 
-    listen_sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
-
-    if(listen_sock == INVALID_SOCKET)
+    sock(const std::string& port)
     {
-        printf("Error at socket(): %ld\n", WSAGetLastError());
-        freeaddrinfo(addr);
-        WSACleanup();
-        return 1;
+        WSADATA wsa_data;
+
+        if(auto result = WSAStartup(MAKEWORD(2,2), &wsa_data); result != 0)
+        {
+            printf("WSAStartup failed: %d\n", result);
+            assert(false);
+        }
+
+        addrinfo hints = {};
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = SOCK_DGRAM;
+        hints.ai_protocol = IPPROTO_UDP;
+        hints.ai_flags = AI_PASSIVE;
+
+        addrinfo* addr = nullptr;
+
+        if(auto result = getaddrinfo(nullptr, port.c_str(), &hints, &addr); result != 0)
+        {
+            printf("getaddrinfo failed: %d\n", result);
+            WSACleanup();
+            assert(false);
+        }
+
+
+        listen_sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+
+        if(listen_sock == INVALID_SOCKET)
+        {
+            printf("Error at socket(): %ld\n", WSAGetLastError());
+            freeaddrinfo(addr);
+            WSACleanup();
+            assert(false);
+        }
+
+        int yes = 1;
+
+        setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
+
+        if(auto result = bind(listen_sock, addr->ai_addr, (int)addr->ai_addrlen); result == SOCKET_ERROR)
+        {
+            printf("bind failed with error: %d\n", WSAGetLastError());
+            freeaddrinfo(addr);
+            closesocket(listen_sock);
+            WSACleanup();
+            assert(false);
+        }
     }
 
-    int yes = 1;
-
-    setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
-
-    if(auto result = bind(listen_sock, addr->ai_addr, (int)addr->ai_addrlen); result == SOCKET_ERROR)
+    std::pair<std::vector<char>, sockaddr_storage> read_all()
     {
-        printf("bind failed with error: %d\n", WSAGetLastError());
-        freeaddrinfo(addr);
-        closesocket(listen_sock);
-        WSACleanup();
-        return 1;
-    }
-
-    device dev;
-
-    dev.set_freq(1000000);
-
-    std::jthread out([&]()
-    {
-        rtlsdr_read_async(dev.v, pipe_data_into_queue, nullptr, 0, 0);
-    });
-
-    while(1)
-    {
-        char data[1024] = {};
-        int max_data = 1024;
+        std::vector<char> data;
+        data.resize(1024);
 
         sockaddr_storage from = {};
         int sock_size = sizeof(from);
 
         int64_t numbytes = 0;
 
-        if(numbytes = recvfrom(listen_sock, data, max_data, 0, (sockaddr*)&from, &sock_size); numbytes == -1)
+        if(numbytes = recvfrom(listen_sock, data.data(), data.size(), 0, (sockaddr*)&from, &sock_size); numbytes == -1)
         {
             printf("Error receiving from anyone\n");
-            continue;
+            return {};
         }
 
-        if(numbytes < sizeof(char) + sizeof(int))
+        return {data, from};
+    }
+};
+
+int main()
+{
+    device dev;
+
+    dev.set_freq(1000000);
+
+    std::jthread([&]()
+    {
+        rtlsdr_read_async(dev.v, pipe_data_into_queue, nullptr, 0, 0);
+    }).detach();
+
+    sock sck("6960");
+
+    while(1)
+    {
+        auto [data, from] = sck.read_all();
+
+        if(data.size() < sizeof(char) + sizeof(int))
             continue;
 
         unsigned char cmd = data[0];
@@ -319,7 +352,7 @@ int main()
             context* ctx = new context;
             //ctx->dv = dev.v;
             ctx->whomst = from;
-            ctx->sock = listen_sock;
+            ctx->sock = sck.listen_sock;
 
             std::jthread([](context* ctx)
             {
