@@ -374,6 +374,34 @@ int main()
 
                 info.send_all(from, dat);
             }
+
+            if(cmd == 0x15)
+            {
+                int gain = rtlsdr_get_tuner_gain(dev.v);
+
+                info.send_all(from, gain);
+            }
+
+            if(cmd == 0x16)
+            {
+                uint32_t gain = rtlsdr_get_sample_rate(dev.v);
+
+                info.send_all(from, gain);
+            }
+
+            if(cmd == 0x17)
+            {
+                uint32_t sam = rtlsdr_get_direct_sampling(dev.v);
+
+                info.send_all(from, sam);
+            }
+
+            if(cmd == 0x18)
+            {
+                uint32_t t = rtlsdr_get_offset_tuning(dev.v);
+
+                info.send_all(from, t);
+            }
         }
 
     }).detach();
