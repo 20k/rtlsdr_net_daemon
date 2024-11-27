@@ -424,6 +424,13 @@ int main()
 
                 info.send_all(from, dat);
             }
+
+            if(cmd == 0x20)
+            {
+                uint32_t freq = rtlsdr_get_center_freq(dev.v);
+
+                info.send_all(from, freq);
+            }
         }
 
     }).detach();

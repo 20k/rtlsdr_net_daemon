@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <string>
 #include <vector>
+#include <optional>
 
 #if 0
 // a sample exported function
@@ -145,6 +146,18 @@ struct sock
     }
 };
 
+template<typename T>
+std::optional<T> read_pop(std::vector<char>& in)
+{
+    if(in.size() < sizeof(T))
+        return std::nullopt;
+
+    T ret = {};
+    memcpy(&ret, in.data(), sizeof(T));
+    in = std::vector<char>(in.begin() + sizeof(T), in.end());
+    return ret;
+}
+
 sock* data_sock = nullptr;
 sock* query_sock = nullptr;
 
@@ -221,6 +234,17 @@ DLL_EXPORT int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
     data_sock->write(freq);
 
     return 0;
+}
+
+DLL_EXPORT uint32_t rtlsdr_get_center_freq(rtlsdr_dev_t *dev)
+{
+    assert(query_sock);
+
+    query_sock->write({0x20});
+
+    auto result = query_sock->read();
+
+    return read_pop<uint32_t>(result).value();
 }
 
 extern "C" DLL_EXPORT BOOL APIENTRY DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
