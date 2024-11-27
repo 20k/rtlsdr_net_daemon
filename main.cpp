@@ -280,6 +280,23 @@ struct sock
     {
         sendall(listen_sock, to, data);
     }
+
+    void send_all(sockaddr_storage to, unsigned int in)
+    {
+        std::vector<char> data;
+        data.resize(sizeof(in));
+
+        memcpy(data.data(), &in, sizeof(in));
+
+        return send_all(to, data);
+    }
+
+    void send_all(sockaddr_storage to, const std::string& in)
+    {
+        std::vector<char> data(in.begin(), in.end());
+
+        return send_all(to, data);
+    }
 };
 
 int main()
