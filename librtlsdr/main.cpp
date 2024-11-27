@@ -58,7 +58,6 @@ bool sendall(SOCKET s, addrinfo* ptr, const std::vector<char>& data)
     return false;
 }
 
-
 struct sock
 {
     SOCKET s = INVALID_SOCKET;
@@ -87,14 +86,18 @@ struct sock
             throw std::runtime_error("Sock Error");
         }
 
-        // loop through all the results and make a socket
+        int yes = 1;
+
         for(found_addr = addr; found_addr != nullptr; found_addr = found_addr->ai_next)
         {
-            if ((s = socket(found_addr->ai_family, found_addr->ai_socktype,
-                    found_addr->ai_protocol)) == -1) {
+            if(s = socket(found_addr->ai_family, found_addr->ai_socktype,
+                    found_addr->ai_protocol); s == -1)
+            {
                 perror("talker: socket");
                 continue;
             }
+
+            setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
 
             break;
         }
