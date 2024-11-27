@@ -45,7 +45,7 @@ bool sendall(SOCKET s, addrinfo* ptr, const std::vector<char>& data)
 {
     int64_t bytes_sent = 0;
 
-    while(bytes_sent < data.size())
+    while(bytes_sent < (int64_t)data.size())
     {
         int count = sendto(s, data.data() + bytes_sent, data.size() - bytes_sent, 0, ptr->ai_addr, ptr->ai_addrlen);
 
@@ -69,7 +69,7 @@ std::vector<char> readall(SOCKET s, sockaddr_storage* their_addr)
 
     assert(len != -1);
 
-    assert(len <= bufsize.size());
+    assert(len <= (int)bufsize.size());
 
     bufsize.resize(len);
 
@@ -99,7 +99,7 @@ struct sock
 
         if(int result = getaddrinfo("127.0.0.1", port.c_str(), &hints, &addr); result != 0)
         {
-            printf("Error at socket(): %ld\n", WSAGetLastError());
+            printf("Error at socket(): %d\n", WSAGetLastError());
             WSACleanup();
             throw std::runtime_error("Sock Error");
         }
@@ -109,7 +109,7 @@ struct sock
         for(found_addr = addr; found_addr != nullptr; found_addr = found_addr->ai_next)
         {
             if(s = socket(found_addr->ai_family, found_addr->ai_socktype,
-                    found_addr->ai_protocol); s == -1)
+                    found_addr->ai_protocol); s == (uint32_t)SOCKET_ERROR)
             {
                 perror("talker: socket");
                 continue;
@@ -318,7 +318,7 @@ DLL_EXPORT int rtlsdr_get_tuner_gains(rtlsdr_dev_t *dev, int *gains)
 
     if(gains)
     {
-        for(int i=0; i < len; i++)
+        for(int i=0; i < (int)len; i++)
         {
             gains[i] = read_pop<int>(result).value();
         }
@@ -442,7 +442,7 @@ std::vector<char> query_read(char type)
 {
     assert(query_sock);
 
-    query_sock->write({type});
+    query_sock->write(std::vector<char>{type});
 
     return query_sock->read();
 }
@@ -478,7 +478,30 @@ DLL_EXPORT int rtlsdr_reset_buffer(rtlsdr_dev_t *dev)
 
 DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_read)
 {
+    assert(data_sock);
 
+    std::vector<char> data = data_sock->read();
+
+    assert(buf);
+
+    while((int)data.size() < len)
+    {
+        auto next = data_sock->read();
+
+        data.insert(data.end(), next.begin(), next.end());
+    }
+
+    if((int)data.size() > len)
+    {
+        int extra = (int)data.size() - len;
+        data = std::vector<char>(data.begin() + extra, data.end());
+    }
+
+    if(n_read)
+        *n_read = data.size();
+
+    memcpy(buf, data.data(), len);
+    return 0;
 }
 
 extern "C" DLL_EXPORT BOOL APIENTRY DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)

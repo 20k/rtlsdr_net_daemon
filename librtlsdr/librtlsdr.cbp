@@ -30,6 +30,7 @@
 			</Target>
 		</Build>
 		<Compiler>
+			<Add option="-Wall" />
 			<Add option="-std=c++23" />
 			<Add directory="../deps/rtl-sdr/include" />
 		</Compiler>
