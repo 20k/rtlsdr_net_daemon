@@ -6,6 +6,7 @@
 #include <rtl-sdr.h>
 #include <stdexcept>
 #include <assert.h>
+#include <string>
 
 #if 0
 // a sample exported function
@@ -41,8 +42,9 @@ int DLL_EXPORT rtlsdr_get_index_by_serial(const char* serial)
 struct sock
 {
     SOCKET s = INVALID_SOCKET;
+    addrinfo found_addr;
 
-    sock()
+    sock(const std::string& port)
     {
         WSADATA wsa_data;
 
@@ -58,21 +60,23 @@ struct sock
 
         addrinfo* addr = nullptr;
 
-        if(int result = getaddrinfo("127.0.0.1", "6960", &hints, &addr); result != 0)
+        if(int result = getaddrinfo("127.0.0.1", port.c_str(), &hints, &addr); result != 0)
         {
             printf("Error at socket(): %ld\n", WSAGetLastError());
             WSACleanup();
             throw std::runtime_error("Sock Error");
         }
 
-        s = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
-
-        if(s == INVALID_SOCKET)
+        // loop through all the results and make a socket
+        for(found_addr = addr; found_addr != nullptr; found_addr = found_addr->ai_next)
         {
-            printf("Error at socket(): %ld\n", WSAGetLastError());
-            freeaddrinfo(addr);
-            WSACleanup();
-            throw std::runtime_error("Sock Error 2");
+            if ((s = socket(found_addr->ai_family, found_addr->ai_socktype,
+                    found_addr->ai_protocol)) == -1) {
+                perror("talker: socket");
+                continue;
+            }
+
+            break;
         }
 
         assert(s);
