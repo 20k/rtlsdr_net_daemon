@@ -299,6 +299,21 @@ struct sock
     }
 };
 
+void add(std::vector<char>& in, int v)
+{
+    auto len = in.size();
+
+    in.resize(in.size() + sizeof(int));
+
+    memcpy(in.data() + len, &v, sizeof(int));
+}
+
+void add(std::vector<char>& in, const std::vector<int> v)
+{
+    for(auto& i : v)
+        add(in, i);
+}
+
 int main()
 {
     device dev;
@@ -337,6 +352,27 @@ int main()
                 std::string name(rtlsdr_get_device_name(idx));
 
                 info.send_all(from, name);
+            }
+
+            if(cmd == 0x12)
+            {
+                info.send_all(from, rtlsdr_get_freq_correction(dev.v));
+            }
+
+            if(cmd == 0x13)
+            {
+                info.send_all(from, rtlsdr_get_tuner_type(dev.v));
+            }
+
+            if(cmd == 0x14)
+            {
+                std::vector<int> gains = dev.get_gains();
+
+                std::vector<char> dat;
+                add(dat, (int)gains.size());
+                add(dat, gains);
+
+                info.send_all(from, dat);
             }
         }
 
