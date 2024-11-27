@@ -18,13 +18,34 @@
 				</Linker>
 			</Target>
 			<Target title="Release">
-				<Option output="bin/Release/rtlsdr" prefix_auto="1" extension_auto="1" />
+				<Option output="bin/Release/librtlsdr" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Release/" />
 				<Option type="3" />
 				<Option compiler="gcc-msys2-mingw64" />
 				<Option createDefFile="1" />
 				<Option createStaticLib="1" />
+				<Compiler>
+					<Add option="-O3" />
+				</Compiler>
 				<Linker>
+					<Add option="-O3" />
+					<Add option="-s" />
+					<Add library="user32" />
+				</Linker>
+			</Target>
+			<Target title="Release32">
+				<Option output="bin/Release/rtlsdr" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release32/" />
+				<Option type="3" />
+				<Option compiler="gcc-msys2-mingw32" />
+				<Option createDefFile="1" />
+				<Option createStaticLib="1" />
+				<Compiler>
+					<Add option="-O3" />
+				</Compiler>
+				<Linker>
+					<Add option="-O3" />
+					<Add option="-s" />
 					<Add library="user32" />
 				</Linker>
 			</Target>
@@ -37,13 +58,25 @@
 			<Add directory="../deps/rtl-sdr/include" />
 		</Compiler>
 		<Linker>
-			<Add option="-s" />
 			<Add option="-static-libstdc++" />
 			<Add option="-static-libgcc" />
 			<Add option="-static" />
 			<Add option="-lws2_32" />
 			<Add option="-lsfml-system-s" />
 		</Linker>
+		<Unit filename="Manifest2.res">
+			<Option link="0" />
+		</Unit>
+		<Unit filename="Resources.rc">
+			<Option compilerVar="WINDRES" />
+			<Option compile="0" />
+			<Option link="0" />
+		</Unit>
+		<Unit filename="hello.rc">
+			<Option compilerVar="WINDRES" />
+			<Option compile="0" />
+			<Option link="0" />
+		</Unit>
 		<Unit filename="main.cpp" />
 		<Unit filename="main.h" />
 		<Extensions />

@@ -21,6 +21,16 @@ void DLL_EXPORT SomeFunction(const LPCSTR sometext)
 }
 #endif
 
+FILE* get_file()
+{
+    static FILE* file = fopen("./dump.txt", "a");
+    return file;
+}
+
+//#define LOG(x) fwrite(x, strlen(x), 1, get_file())
+
+#define LOG(x)
+
 bool sendall(SOCKET s, addrinfo* ptr, const std::vector<char>& data)
 {
     int64_t bytes_sent = 0;
@@ -203,11 +213,15 @@ std::vector<char> query_read(char type)
 
 uint32_t DLL_EXPORT rtlsdr_get_device_count(void)
 {
+    LOG("Device Count");
+
     return 1;
 }
 
 const char* DLL_EXPORT rtlsdr_get_device_name(uint32_t index)
 {
+    LOG("Device name");
+
     std::vector<char> out;
     out.push_back(0x11);
     add(out, index);
@@ -226,11 +240,15 @@ int DLL_EXPORT rtlsdr_get_device_usb_strings(uint32_t index,
 					     char* p,
 					     char* s)
 {
+    LOG("Device usb strings");
+
     return rtlsdr_get_usb_strings(nullptr, m, p, s);
 }
 
 int DLL_EXPORT rtlsdr_get_index_by_serial(const char* serial)
 {
+    LOG("Idx By Serial");
+
     return 0;
 }
 
@@ -238,22 +256,30 @@ char data_storage[1024] = {};
 
 DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
 {
+    LOG("Open");
+
     dev[0] = (rtlsdr_dev_t*)data_storage;
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_close(rtlsdr_dev_t *dev)
 {
+    LOG("Close");
+
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_set_xtal_freq(rtlsdr_dev_t *dev, uint32_t rtl_freq, uint32_t tuner_freq)
 {
+    LOG("Setx");
+
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_get_xtal_freq(rtlsdr_dev_t *dev, uint32_t *rtl_freq, uint32_t *tuner_freq)
 {
+    LOG("Getx");
+
     get_query_sock()->write({0x19});
 
     std::vector<char> read = get_query_sock()->read();
@@ -277,6 +303,8 @@ DLL_EXPORT int rtlsdr_get_xtal_freq(rtlsdr_dev_t *dev, uint32_t *rtl_freq, uint3
 
 DLL_EXPORT int rtlsdr_get_usb_strings(rtlsdr_dev_t *dev, char* m, char* p, char* s)
 {
+    LOG("usbs");
+
     if(m)
     {
         for(int i=0; i < 256; i++)
@@ -324,16 +352,22 @@ DLL_EXPORT int rtlsdr_get_usb_strings(rtlsdr_dev_t *dev, char* m, char* p, char*
 
 DLL_EXPORT int rtlsdr_write_eeprom(rtlsdr_dev_t *dev, uint8_t* data, uint8_t offset, uint16_t len)
 {
+    LOG("w/e");
+
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_read_eeprom(rtlsdr_dev_t *dev, uint8_t *data, uint8_t offset, uint16_t len)
 {
+    LOG("r/e");
+
     return -3;
 }
 
 DLL_EXPORT int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 {
+    LOG("setcq");
+
     data_write(0x01, freq);
 
     return 0;
@@ -341,6 +375,8 @@ DLL_EXPORT int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 
 DLL_EXPORT uint32_t rtlsdr_get_center_freq(rtlsdr_dev_t *dev)
 {
+    LOG("getcq");
+
     auto result = query_read(0x20);
 
     return read_pop<uint32_t>(result).value();
@@ -348,6 +384,8 @@ DLL_EXPORT uint32_t rtlsdr_get_center_freq(rtlsdr_dev_t *dev)
 
 DLL_EXPORT int rtlsdr_set_freq_correction(rtlsdr_dev_t *dev, int ppm)
 {
+    LOG("fsetfq");
+
     data_write(0x05, ppm);
 
     return 0;
@@ -355,6 +393,8 @@ DLL_EXPORT int rtlsdr_set_freq_correction(rtlsdr_dev_t *dev, int ppm)
 
 DLL_EXPORT int rtlsdr_get_freq_correction(rtlsdr_dev_t *dev)
 {
+    LOG("getf");
+
     auto result = query_read(0x12);
 
     return read_pop<int>(result).value();
@@ -362,11 +402,15 @@ DLL_EXPORT int rtlsdr_get_freq_correction(rtlsdr_dev_t *dev)
 
 DLL_EXPORT enum rtlsdr_tuner rtlsdr_get_tuner_type(rtlsdr_dev_t *dev)
 {
+    LOG("gettt");
+
     return RTLSDR_TUNER_R828D;
 }
 
 DLL_EXPORT int rtlsdr_get_tuner_gains(rtlsdr_dev_t *dev, int *gains)
 {
+    LOG("gettg");
+
     get_query_sock()->write({0x14});
 
     auto result = get_query_sock()->read();
@@ -386,12 +430,16 @@ DLL_EXPORT int rtlsdr_get_tuner_gains(rtlsdr_dev_t *dev, int *gains)
 
 DLL_EXPORT int rtlsdr_set_tuner_gain(rtlsdr_dev_t *dev, int gain)
 {
+    LOG("settg");
+
     data_write(0x04, gain);
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_set_tuner_bandwidth(rtlsdr_dev_t *dev, uint32_t bw)
 {
+    LOG("settb");
+
     data_write(0x21, bw);
 
     return 0;
@@ -399,6 +447,8 @@ DLL_EXPORT int rtlsdr_set_tuner_bandwidth(rtlsdr_dev_t *dev, uint32_t bw)
 
 DLL_EXPORT int rtlsdr_get_tuner_gain(rtlsdr_dev_t *dev)
 {
+    LOG("gettg");
+
     auto data = query_read(0x15);
 
     return read_pop<int>(data).value();
@@ -406,11 +456,15 @@ DLL_EXPORT int rtlsdr_get_tuner_gain(rtlsdr_dev_t *dev)
 
 DLL_EXPORT int rtlsdr_set_tuner_if_gain(rtlsdr_dev_t *dev, int stage, int gain)
 {
+    LOG("setifg");
+
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_set_tuner_gain_mode(rtlsdr_dev_t *dev, int manual)
 {
+    LOG("settgm");
+
     data_write(0x03, manual);
 
     return 0;
@@ -418,6 +472,8 @@ DLL_EXPORT int rtlsdr_set_tuner_gain_mode(rtlsdr_dev_t *dev, int manual)
 
 DLL_EXPORT int rtlsdr_set_sample_rate(rtlsdr_dev_t *dev, uint32_t rate)
 {
+    LOG("setsr");
+
     data_write(0x02, rate);
 
     return 0;
@@ -425,6 +481,8 @@ DLL_EXPORT int rtlsdr_set_sample_rate(rtlsdr_dev_t *dev, uint32_t rate)
 
 DLL_EXPORT uint32_t rtlsdr_get_sample_rate(rtlsdr_dev_t *dev)
 {
+    LOG("getsr");
+
     auto data = query_read(0x16);
 
     return read_pop<uint32_t>(data).value();
@@ -432,11 +490,15 @@ DLL_EXPORT uint32_t rtlsdr_get_sample_rate(rtlsdr_dev_t *dev)
 
 DLL_EXPORT int rtlsdr_set_testmode(rtlsdr_dev_t *dev, int on)
 {
+    LOG("settest");
+
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_set_agc_mode(rtlsdr_dev_t *dev, int on)
 {
+    LOG("agc");
+
     data_write(0x08, on);
 
     return 0;
@@ -444,35 +506,47 @@ DLL_EXPORT int rtlsdr_set_agc_mode(rtlsdr_dev_t *dev, int on)
 
 DLL_EXPORT int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 {
+    LOG("sds");
+
     data_write(0x09, on);
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_get_direct_sampling(rtlsdr_dev_t *dev)
 {
+    LOG("getds");
+
     auto dat = query_read(0x17);
     return read_pop<int>(dat).value();
 }
 
 DLL_EXPORT int rtlsdr_set_offset_tuning(rtlsdr_dev_t *dev, int on)
 {
+    LOG("sot");
+
     data_write(0x0a, on);
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_get_offset_tuning(rtlsdr_dev_t *dev)
 {
+    LOG("got");
+
     auto dat = query_read(0x18);
     return read_pop<int>(dat).value();
 }
 
 DLL_EXPORT int rtlsdr_reset_buffer(rtlsdr_dev_t *dev)
 {
+    LOG("reset");
+
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_read)
 {
+    LOG("reads");
+
     std::vector<char> data = get_data_sock()->read();
 
     assert(buf);
@@ -501,6 +575,8 @@ std::atomic_int cancelled{0};
 
 DLL_EXPORT int rtlsdr_wait_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx)
 {
+    LOG("waita");
+
     return rtlsdr_read_async(dev, cb, ctx, 0, 0);
 }
 
@@ -509,6 +585,8 @@ bool has_ever_asked_for_data = false;
 
 DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len)
 {
+    LOG("reada");
+
     cancelled = 0;
 
     std::vector<unsigned char> next_data;
@@ -547,41 +625,23 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
 
 DLL_EXPORT int rtlsdr_cancel_async(rtlsdr_dev_t *dev)
 {
+    LOG("cancel");
+
     cancelled = 1;
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on)
 {
+    LOG("settee");
+
     data_write(0x0e, on);
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_set_bias_tee_gpio(rtlsdr_dev_t *dev, int gpio, int on)
 {
+    LOG("settee2");
+
     return 0;
-}
-
-extern "C" DLL_EXPORT BOOL APIENTRY DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
-{
-    switch (fdwReason)
-    {
-        case DLL_PROCESS_ATTACH:
-            // attach to process
-            // return FALSE to fail DLL load
-            break;
-
-        case DLL_PROCESS_DETACH:
-            // detach from process
-            break;
-
-        case DLL_THREAD_ATTACH:
-            // attach to thread
-            break;
-
-        case DLL_THREAD_DETACH:
-            // detach from thread
-            break;
-    }
-    return TRUE; // succesful
 }

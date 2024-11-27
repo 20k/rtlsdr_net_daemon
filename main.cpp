@@ -541,7 +541,59 @@ int main()
             all_dat.push_back(sck.read_all());
         }
 
-        //auto [data, from] = sck.read_all();
+        auto count_type = [&](unsigned char type)
+        {
+            int counts = 0;
+
+            for(auto& [a, b] : all_dat)
+            {
+                if(a.size() == 0)
+                    continue;
+
+                if(a[0] == type)
+                    counts++;
+            }
+
+            return counts;
+        };
+
+        auto remove_num_of = [&](unsigned char type, int num)
+        {
+            if(num <= 0)
+                return;
+
+            int counts = 0;
+
+            for(int i=0; i < (int)all_dat.size(); i++)
+            {
+                if(all_dat[i].first.size() == 0)
+                    continue;
+
+                if(all_dat[i].first[0] == type)
+                {
+                    all_dat.erase(all_dat.begin() + i);
+                    i--;
+                    counts++;
+
+                    if(counts == num)
+                        return;
+                }
+            }
+        };
+
+        auto remove_all_except_last = [&](unsigned char type)
+        {
+            auto cnt = count_type(type);
+            remove_num_of(type, cnt - 1);
+        };
+
+        remove_all_except_last(0x01);
+        remove_all_except_last(0x02);
+        remove_all_except_last(0x03);
+        remove_all_except_last(0x04);
+        remove_all_except_last(0x05);
+        remove_all_except_last(0x0d);
+        remove_all_except_last(0x21);
 
         for(auto& [data, from] : all_dat)
         {
