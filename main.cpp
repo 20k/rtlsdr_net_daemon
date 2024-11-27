@@ -178,8 +178,6 @@ void async_thread(context* ctx)
         {
             last_id = to_write.back().id + 1;
 
-            //printf("Bufs %li\n", to_write.size());
-
             for(expiring_buffer& buf : to_write)
             {
                 int chunk_size = 1024;
@@ -258,6 +256,14 @@ struct sock
             WSACleanup();
             assert(false);
         }
+
+        #ifdef _WIN32
+        #define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR, 12)
+
+        bool report_errors = false;
+        DWORD bytes = 0;
+        WSAIoctl(listen_sock, SIO_UDP_CONNRESET, &report_errors, sizeof(report_errors), nullptr, 0, &bytes, nullptr, nullptr);
+        #endif
     }
 
     std::pair<std::vector<char>, sockaddr_storage> read_all()
@@ -272,7 +278,7 @@ struct sock
 
         if(numbytes = recvfrom(listen_sock, data.data(), data.size(), 0, (sockaddr*)&from, &sock_size); numbytes == -1)
         {
-            printf("Error receiving from anyone\n");
+            printf("Error receiving from anyone %d\n", WSAGetLastError());
             return {};
         }
 
