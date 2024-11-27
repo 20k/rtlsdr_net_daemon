@@ -326,7 +326,17 @@ int main()
 
             if(cmd == 0x10)
             {
+                info.send_all(from, rtlsdr_get_device_count());
+            }
 
+            if(cmd == 0x11 && data.size() >= 5)
+            {
+                uint32_t idx = 0;
+                memcpy(&idx, data.data() + 1, sizeof(idx));
+
+                std::string name(rtlsdr_get_device_name(idx));
+
+                info.send_all(from, name);
             }
         }
 
