@@ -370,6 +370,60 @@ int main()
                 all_dat.push_back(info.read_all());
             }
 
+            auto count_type = [&](unsigned char type)
+            {
+                int counts = 0;
+
+                for(auto& [a, b] : all_dat)
+                {
+                    if(a.size() == 0)
+                        continue;
+
+                    if(a[0] == type)
+                        counts++;
+                }
+
+                return counts;
+            };
+
+            auto remove_num_of = [&](unsigned char type, int num)
+            {
+                if(num <= 0)
+                    return;
+
+                int counts = 0;
+
+                for(int i=0; i < (int)all_dat.size(); i++)
+                {
+                    if(all_dat[i].first.size() == 0)
+                        continue;
+
+                    if(all_dat[i].first[0] == type)
+                    {
+                        all_dat.erase(all_dat.begin() + i);
+                        i--;
+                        counts++;
+
+                        if(counts == num)
+                            return;
+                    }
+                }
+            };
+
+            auto remove_all_except_last = [&](unsigned char type)
+            {
+                auto cnt = count_type(type);
+                remove_num_of(type, cnt - 1);
+            };
+
+            remove_all_except_last(0x01);
+            remove_all_except_last(0x02);
+            remove_all_except_last(0x03);
+            remove_all_except_last(0x04);
+            remove_all_except_last(0x05);
+            remove_all_except_last(0x0d);
+            remove_all_except_last(0x21);
+
             for(const auto& [data, from] : all_dat)
             {
                 if(data.size() < 1)
@@ -484,6 +538,45 @@ int main()
 
                     info.send_all(from, std::string(s));
                 }
+
+                if(data.size() < sizeof(char) + sizeof(int))
+                    continue;
+
+                unsigned int param = 0;
+                memcpy((void*)&param, (void*)&data[1], sizeof(int));
+
+                printf("Got wcmd %i\n", cmd);
+
+                if(cmd == 0x01)
+                    rtlsdr_set_center_freq(dev.v, param);
+                if(cmd == 0x02)
+                    rtlsdr_set_sample_rate(dev.v, param);
+                if(cmd == 0x03)
+                    rtlsdr_set_tuner_gain_mode(dev.v, param);
+                if(cmd == 0x04)
+                    rtlsdr_set_tuner_gain(dev.v, param);
+                if(cmd == 0x05)
+                    rtlsdr_set_freq_correction(dev.v, param);
+                if(cmd == 0x06)
+                {}
+                if(cmd == 0x07)
+                    rtlsdr_set_testmode(dev.v, param);
+                if(cmd == 0x08)
+                    rtlsdr_set_agc_mode(dev.v, param);
+                if(cmd == 0x09)
+                    rtlsdr_set_direct_sampling(dev.v, param);
+                if(cmd == 0x0a)
+                    rtlsdr_set_offset_tuning(dev.v, param);
+                if(cmd == 0x0b)
+                    rtlsdr_set_xtal_freq(dev.v, param, 0);
+                if(cmd == 0x0c)
+                    rtlsdr_set_xtal_freq(dev.v, 0, param);
+                if(cmd == 0x0d)
+                    dev.set_gain(param);
+                if(cmd == 0x0e)
+                    rtlsdr_set_bias_tee(dev.v, param);
+                if(cmd == 0x21)
+                    rtlsdr_set_tuner_bandwidth(dev.v, param);
             }
         }
 
@@ -498,99 +591,14 @@ int main()
             all_dat.push_back(sck.read_all());
         }
 
-        auto count_type = [&](unsigned char type)
+        for(const auto& [data, from] : all_dat)
         {
-            int counts = 0;
-
-            for(auto& [a, b] : all_dat)
-            {
-                if(a.size() == 0)
-                    continue;
-
-                if(a[0] == type)
-                    counts++;
-            }
-
-            return counts;
-        };
-
-        auto remove_num_of = [&](unsigned char type, int num)
-        {
-            if(num <= 0)
-                return;
-
-            int counts = 0;
-
-            for(int i=0; i < (int)all_dat.size(); i++)
-            {
-                if(all_dat[i].first.size() == 0)
-                    continue;
-
-                if(all_dat[i].first[0] == type)
-                {
-                    all_dat.erase(all_dat.begin() + i);
-                    i--;
-                    counts++;
-
-                    if(counts == num)
-                        return;
-                }
-            }
-        };
-
-        auto remove_all_except_last = [&](unsigned char type)
-        {
-            auto cnt = count_type(type);
-            remove_num_of(type, cnt - 1);
-        };
-
-        remove_all_except_last(0x01);
-        remove_all_except_last(0x02);
-        remove_all_except_last(0x03);
-        remove_all_except_last(0x04);
-        remove_all_except_last(0x05);
-        remove_all_except_last(0x0d);
-        remove_all_except_last(0x21);
-
-        for(auto& [data, from] : all_dat)
-        {
-            if(data.size() < sizeof(char) + sizeof(int))
+            if(data.size() < sizeof(char))
                 continue;
 
             unsigned char cmd = data[0];
-            unsigned int param = 0;
-            memcpy((void*)&param, (void*)&data[1], sizeof(int));
 
             printf("Got cmd %i\n", cmd);
-
-            if(cmd == 0x01)
-                rtlsdr_set_center_freq(dev.v, param);
-            if(cmd == 0x02)
-                rtlsdr_set_sample_rate(dev.v, param);
-            if(cmd == 0x03)
-                rtlsdr_set_tuner_gain_mode(dev.v, param);
-            if(cmd == 0x04)
-                rtlsdr_set_tuner_gain(dev.v, param);
-            if(cmd == 0x05)
-                rtlsdr_set_freq_correction(dev.v, param);
-            if(cmd == 0x06)
-            {}
-            if(cmd == 0x07)
-                rtlsdr_set_testmode(dev.v, param);
-            if(cmd == 0x08)
-                rtlsdr_set_agc_mode(dev.v, param);
-            if(cmd == 0x09)
-                rtlsdr_set_direct_sampling(dev.v, param);
-            if(cmd == 0x0a)
-                rtlsdr_set_offset_tuning(dev.v, param);
-            if(cmd == 0x0b)
-                rtlsdr_set_xtal_freq(dev.v, param, 0);
-            if(cmd == 0x0c)
-                rtlsdr_set_xtal_freq(dev.v, 0, param);
-            if(cmd == 0x0d)
-                dev.set_gain(param);
-            if(cmd == 0x0e)
-                rtlsdr_set_bias_tee(dev.v, param);
 
             if(cmd == 0x0f)
             {
@@ -605,8 +613,6 @@ int main()
                 }, ctx).detach();
             }
 
-            if(cmd == 0x21)
-                rtlsdr_set_tuner_bandwidth(dev.v, param);
         }
     }
 

@@ -63,6 +63,7 @@
 			<Add option="-static" />
 			<Add option="-lws2_32" />
 			<Add option="-lsfml-system-s" />
+			<Add option="-lwinmm" />
 		</Linker>
 		<Unit filename="Manifest2.res">
 			<Option link="0" />

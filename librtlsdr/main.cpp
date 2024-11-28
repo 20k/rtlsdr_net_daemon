@@ -201,7 +201,7 @@ void data_write(char type, auto what)
 
     add(data, what);
 
-    get_data_sock()->write(data);
+    get_query_sock()->write(data);
 }
 
 std::vector<char> query_read(char type)
@@ -616,7 +616,7 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
         }
         else
         {
-            //sf::sleep(sf::milliseconds(1));
+            sf::sleep(sf::milliseconds(1));
         }
     }
 
