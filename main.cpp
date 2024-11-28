@@ -363,170 +363,127 @@ int main()
     {
         while(1)
         {
-            auto [data, from] = info.read_all();
+            std::vector<std::pair<std::vector<char>, sockaddr_storage>> all_dat;
 
-            if(data.size() < 1)
-                continue;
-
-            unsigned char cmd = data[0];
-
-            printf("Qcmd %i\n", cmd);
-
-            if(cmd == 0x10)
+            while(info.can_read())
             {
-                info.send_all(from, rtlsdr_get_device_count());
+                all_dat.push_back(info.read_all());
             }
 
-            if(cmd == 0x11 && data.size() >= 5)
+            for(const auto& [data, from] : all_dat)
             {
-                uint32_t idx = 0;
-                memcpy(&idx, data.data() + 1, sizeof(idx));
+                if(data.size() < 1)
+                    continue;
 
-                std::string name(rtlsdr_get_device_name(idx));
+                unsigned char cmd = data[0];
 
-                info.send_all(from, name);
-            }
+                printf("Qcmd %i\n", cmd);
 
-            if(cmd == 0x12)
-            {
-                info.send_all(from, rtlsdr_get_freq_correction(dev.v));
-            }
+                if(cmd == 0x10)
+                {
+                    info.send_all(from, rtlsdr_get_device_count());
+                }
 
-            if(cmd == 0x13)
-            {
-                info.send_all(from, rtlsdr_get_tuner_type(dev.v));
-            }
+                if(cmd == 0x11 && data.size() >= 5)
+                {
+                    uint32_t idx = 0;
+                    memcpy(&idx, data.data() + 1, sizeof(idx));
 
-            if(cmd == 0x14)
-            {
-                std::vector<int> gains = dev.get_gains();
+                    std::string name(rtlsdr_get_device_name(idx));
 
-                std::vector<char> dat;
-                add(dat, (int)gains.size());
-                add(dat, gains);
+                    info.send_all(from, name);
+                }
 
-                info.send_all(from, dat);
-            }
+                if(cmd == 0x12)
+                {
+                    info.send_all(from, rtlsdr_get_freq_correction(dev.v));
+                }
 
-            if(cmd == 0x15)
-            {
-                int gain = rtlsdr_get_tuner_gain(dev.v);
+                if(cmd == 0x13)
+                {
+                    info.send_all(from, rtlsdr_get_tuner_type(dev.v));
+                }
 
-                info.send_all(from, gain);
-            }
+                if(cmd == 0x14)
+                {
+                    std::vector<int> gains = dev.get_gains();
 
-            if(cmd == 0x16)
-            {
-                uint32_t gain = rtlsdr_get_sample_rate(dev.v);
+                    std::vector<char> dat;
+                    add(dat, (int)gains.size());
+                    add(dat, gains);
 
-                info.send_all(from, gain);
-            }
+                    info.send_all(from, dat);
+                }
 
-            if(cmd == 0x17)
-            {
-                uint32_t sam = rtlsdr_get_direct_sampling(dev.v);
+                if(cmd == 0x15)
+                {
+                    int gain = rtlsdr_get_tuner_gain(dev.v);
 
-                info.send_all(from, sam);
-            }
+                    info.send_all(from, gain);
+                }
 
-            if(cmd == 0x18)
-            {
-                uint32_t t = rtlsdr_get_offset_tuning(dev.v);
+                if(cmd == 0x16)
+                {
+                    uint32_t gain = rtlsdr_get_sample_rate(dev.v);
 
-                info.send_all(from, t);
-            }
+                    info.send_all(from, gain);
+                }
 
-            if(cmd == 0x19)
-            {
-                uint32_t freq1 = {};
-                uint32_t freq2 = {};
-                rtlsdr_get_xtal_freq(dev.v, &freq1, &freq2);
+                if(cmd == 0x17)
+                {
+                    uint32_t sam = rtlsdr_get_direct_sampling(dev.v);
 
-                std::vector<char> dat;
-                add(dat, freq1);
-                add(dat, freq2);
+                    info.send_all(from, sam);
+                }
 
-                info.send_all(from, dat);
-            }
+                if(cmd == 0x18)
+                {
+                    uint32_t t = rtlsdr_get_offset_tuning(dev.v);
 
-            if(cmd == 0x20)
-            {
-                uint32_t freq = rtlsdr_get_center_freq(dev.v);
+                    info.send_all(from, t);
+                }
 
-                info.send_all(from, freq);
-            }
+                if(cmd == 0x19)
+                {
+                    uint32_t freq1 = {};
+                    uint32_t freq2 = {};
+                    rtlsdr_get_xtal_freq(dev.v, &freq1, &freq2);
 
-            #if 0
-            if(cmd == 0x22 && data.size() >= 5)
-            {
-                uint32_t idx = 0;
-                memcpy(&idx, data.data() + 1, sizeof(idx));
+                    std::vector<char> dat;
+                    add(dat, freq1);
+                    add(dat, freq2);
 
-                char m[257] = {};
-                char p[257] = {};
-                char s[257] = {};
+                    info.send_all(from, dat);
+                }
 
-                std::cout << "Idx? " << idx << std::endl;
+                if(cmd == 0x20)
+                {
+                    uint32_t freq = rtlsdr_get_center_freq(dev.v);
 
-                rtlsdr_get_usb_strings(dev.v, m, p, s);
+                    info.send_all(from, freq);
+                }
 
-                std::cout << "m " << m[0] << std::endl;
+                if(cmd == 0x24)
+                {
+                    char m[257] = {};
+                    rtlsdr_get_usb_strings(dev.v, m, nullptr, nullptr);
 
-                std::string lm(m);
-                std::string lp(p);
-                std::string ls(s);
+                    info.send_all(from, std::string(m));
+                }
+                if(cmd == 0x25)
+                {
+                    char p[257] = {};
+                    rtlsdr_get_usb_strings(dev.v, nullptr, p, nullptr);
 
-                std::cout << "lm " << lm << std::endl;
-                std::cout << "lp " << lp << std::endl;
-                std::cout << "ls " << ls << std::endl;
+                    info.send_all(from, std::string(p));
+                }
+                if(cmd == 0x26)
+                {
+                    char s[257] = {};
+                    rtlsdr_get_usb_strings(dev.v, nullptr, nullptr, s);
 
-                std::string out = lm + "\0" + lp + "\0" + ls;
-
-                std::cout << "SSize " << out.size() << std::endl;
-
-                std::cout << out << std::endl;
-
-                info.send_all(from, out);
-            }
-
-            if(cmd == 0x23)
-            {
-                char m[257] = {};
-                char p[257] = {};
-                char s[257] = {};
-
-                rtlsdr_get_usb_strings(dev.v, m, p, s);
-
-                std::string lm(m);
-                std::string lp(p);
-                std::string ls(s);
-
-                std::string out = lm + "\0" + lp + "\0" + ls;
-
-                info.send_all(from, out);
-            }
-            #endif // 0
-
-            if(cmd == 0x24)
-            {
-                char m[257] = {};
-                rtlsdr_get_usb_strings(dev.v, m, nullptr, nullptr);
-
-                info.send_all(from, std::string(m));
-            }
-            if(cmd == 0x25)
-            {
-                char p[257] = {};
-                rtlsdr_get_usb_strings(dev.v, nullptr, p, nullptr);
-
-                info.send_all(from, std::string(p));
-            }
-            if(cmd == 0x26)
-            {
-                char s[257] = {};
-                rtlsdr_get_usb_strings(dev.v, nullptr, nullptr, s);
-
-                info.send_all(from, std::string(s));
+                    info.send_all(from, std::string(s));
+                }
             }
         }
 

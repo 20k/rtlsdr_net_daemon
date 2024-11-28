@@ -28,26 +28,18 @@
 		<Compiler>
 			<Add option="-Wall" />
 			<Add option="-std=c++23" />
+			<Add option="-DSFML_STATIC" />
 			<Add directory="deps/rtl-sdr/include" />
 			<Add directory="C:/msys64/ucrt64/include/libusb-1.0" />
 		</Compiler>
 		<Linker>
+			<Add option="-static-libstdc++" />
+			<Add option="-static-libgcc" />
+			<Add option="-static" />
 			<Add option="-lws2_32" />
 			<Add option="-lusb-1.0" />
-			<Add option="-lmingw32" />
-			<Add option="-lglfw3" />
-			<Add option="-lglew32" />
-			<Add option="-lsfml-graphics" />
-			<Add option="-lsfml-window" />
-			<Add option="-lsfml-audio" />
-			<Add option="-lsfml-system" />
-			<Add option="-lfreetype" />
-			<Add option="-lharfbuzz" />
-			<Add option="-lopengl32" />
-			<Add option="-limm32" />
-			<Add option="-lfftw3f" />
-			<Add option="-lm" />
-			<Add option="-lsamplerate" />
+			<Add option="-lsfml-system-s" />
+			<Add option="-lwinmm" />
 		</Linker>
 		<Unit filename="deps/rtl-sdr/src/librtlsdr.c">
 			<Option compilerVar="CC" />
