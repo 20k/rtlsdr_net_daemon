@@ -616,7 +616,7 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
         }
         else
         {
-            sf::sleep(sf::milliseconds(1));
+            //sf::sleep(sf::milliseconds(1));
         }
     }
 

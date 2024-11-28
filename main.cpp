@@ -424,6 +424,9 @@ int main()
             remove_all_except_last(0x0d);
             remove_all_except_last(0x21);
 
+            if(all_dat.size() == 0)
+                sf::sleep(sf::milliseconds(1));
+
             for(const auto& [data, from] : all_dat)
             {
                 if(data.size() < 1)
@@ -591,6 +594,9 @@ int main()
             all_dat.push_back(sck.read_all());
         }
 
+        if(all_dat.size() == 0)
+            sf::sleep(sf::milliseconds(1));
+
         for(const auto& [data, from] : all_dat)
         {
             if(data.size() < sizeof(char))
@@ -612,7 +618,6 @@ int main()
                     async_thread(ctx);
                 }, ctx).detach();
             }
-
         }
     }
 
