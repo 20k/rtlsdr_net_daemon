@@ -344,7 +344,7 @@ int main()
             {
                 for(expiring_buffer& buf : to_write)
                 {
-                    int chunk_size = 1024;
+                    int chunk_size = 1024*8;
 
                     for(int i=0; i < buf.data.size(); i += chunk_size)
                     {
