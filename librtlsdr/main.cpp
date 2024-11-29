@@ -650,8 +650,7 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
         }
     }
 
-    //while(!cancelled)
-    while(1)
+    while(!cancelled)
     {
         auto data = get_data_sock()->read();
 
