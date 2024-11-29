@@ -82,18 +82,10 @@ struct device
 struct expiring_buffer
 {
     std::vector<uint8_t> data;
-    uint64_t id = 0;
-
-    bool expired(uint64_t c_id) const
-    {
-        return (c_id - id) > 1024;
-    }
 };
 
 struct global_queue
 {
-    static inline std::atomic_uint64_t next_id = 0;
-
     std::vector<expiring_buffer> buffers;
     std::mutex mut;
 
@@ -101,28 +93,18 @@ struct global_queue
     {
         std::lock_guard lock(mut);
 
-        while(buffers.size() > 0 && buffers.front().expired(next_id))
-            buffers.erase(buffers.begin());
-
         expiring_buffer exp;
         exp.data = std::move(data);
-        exp.id = next_id++;
 
         buffers.push_back(std::move(exp));
     }
 
-    std::vector<expiring_buffer> get_buffers_after(uint64_t id)
+    std::vector<expiring_buffer> pop_buffers()
     {
         std::lock_guard lock(mut);
 
-        std::vector<expiring_buffer> ret;
-
-        for(auto& i : buffers)
-        {
-            if(i.id >= id)
-                ret.push_back(i);
-        }
-
+        auto ret = std::move(buffers);
+        buffers.clear();
         return ret;
     }
 };
@@ -351,19 +333,15 @@ int main()
 
     std::jthread([&]()
     {
-        uint64_t last_id = gqueue.next_id;
-
         while(1)
         {
             if(global_close)
                 break;
 
-            auto to_write = gqueue.get_buffers_after(last_id);
+            auto to_write = gqueue.pop_buffers();
 
             if(to_write.size() > 0)
             {
-                last_id = to_write.back().id + 1;
-
                 for(expiring_buffer& buf : to_write)
                 {
                     int chunk_size = 1024;
