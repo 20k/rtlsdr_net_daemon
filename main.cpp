@@ -181,45 +181,6 @@ bool sendall(SOCKET s, sock_view sv, const std::vector<char>& data)
     return false;
 }
 
-void async_thread(context* ctx)
-{
-    uint64_t last_id = gqueue.next_id;
-
-    while(1)
-    {
-        if(global_close)
-            break;
-
-        auto to_write = gqueue.get_buffers_after(last_id);
-
-        if(to_write.size() > 0)
-        {
-            last_id = to_write.back().id + 1;
-
-            for(expiring_buffer& buf : to_write)
-            {
-                int chunk_size = 1024;
-
-                for(int i=0; i < buf.data.size(); i += chunk_size)
-                {
-                    int fin = std::min(i + chunk_size, (int)buf.data.size());
-
-                    int num = sendto(ctx->sock, (const char*)(buf.data.data() + i), fin - i, 0, (sockaddr*)&ctx->whomst, sizeof(sockaddr_storage));
-
-                    if(num == -1)
-                        return;
-
-                    assert(num == (fin - i));
-                }
-            }
-        }
-        else
-        {
-            sf::sleep(sf::milliseconds(1));
-        }
-    }
-}
-
 struct sock
 {
     SOCKET listen_sock = INVALID_SOCKET;
@@ -426,6 +387,10 @@ int main()
                         assert(num == (fin - i));
                     }
                 }
+            }
+            else
+            {
+                sf::sleep(sf::milliseconds(1));
             }
         }
     }).detach();
