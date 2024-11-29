@@ -111,94 +111,52 @@ struct sock
     {
         startup();
 
-        if(!broadcast)
+        addrinfo hints = {};
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = SOCK_DGRAM;
+
+        if(broadcast)
+            hints.ai_flags = AI_PASSIVE;
+
+        const char* node = broadcast ? nullptr : address.c_str();
+
+        addrinfo* addr = nullptr;
+
+        if(int result = getaddrinfo(node, port.c_str(), &hints, &addr); result != 0)
         {
-            addrinfo hints = {};
-            hints.ai_family = AF_INET;
-            hints.ai_socktype = SOCK_DGRAM;
+            printf("Error at socket(): %d\n", WSAGetLastError());
+            WSACleanup();
+            throw std::runtime_error("Sock Error");
+        }
 
-            addrinfo* addr = nullptr;
+        bool any = false;
 
-            if(int result = getaddrinfo(address.c_str(), port.c_str(), &hints, &addr); result != 0)
-            {
-                printf("Error at socket(): %d\n", WSAGetLastError());
-                WSACleanup();
-                throw std::runtime_error("Sock Error");
-            }
+        for(found_addr = addr; found_addr != nullptr; found_addr = found_addr->ai_next)
+        {
+            if(s = socket(found_addr->ai_family, found_addr->ai_socktype, found_addr->ai_protocol); s == (uint32_t)SOCKET_ERROR)
+                continue;
 
             int yes = 1;
 
-            for(found_addr = addr; found_addr != nullptr; found_addr = found_addr->ai_next)
-            {
-                if(s = socket(found_addr->ai_family, found_addr->ai_socktype,
-                        found_addr->ai_protocol); s == (uint32_t)SOCKET_ERROR)
-                {
-                    perror("talker: socket");
-                    continue;
-                }
-
-                setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
-                int size = 1024 * 1024 * 5;
-                setsockopt(s, SOL_SOCKET, SO_RCVBUF, (const char*)&size, sizeof(int));
-
-                if(broadcast)
-                {
-                    assert(setsockopt(s, SOL_SOCKET, SO_BROADCAST, (const char*)&yes, sizeof(int)) != SOCKET_ERROR);
-                }
-
-                break;
-            }
-
-        }
-        else
-        {
-            addrinfo hints = {};
-            hints.ai_family = AF_INET;
-            hints.ai_socktype = SOCK_DGRAM;
+            int size = 1024 * 1024 * 5;
+            setsockopt(s, SOL_SOCKET, SO_RCVBUF, (const char*)&size, sizeof(int));
+            setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
 
             if(broadcast)
-                hints.ai_flags = AI_PASSIVE;
-
-            const char* node = broadcast ? nullptr : address.c_str();
-
-            addrinfo* addr = nullptr;
-
-            if(int result = getaddrinfo(node, port.c_str(), &hints, &addr); result != 0)
             {
-                printf("Error at socket(): %d\n", WSAGetLastError());
-                WSACleanup();
-                throw std::runtime_error("Sock Error");
-            }
+                assert(setsockopt(s, SOL_SOCKET, SO_BROADCAST, (const char*)&yes, sizeof(int)) != SOCKET_ERROR);
 
-            bool any = false;
-
-            for(found_addr = addr; found_addr != nullptr; found_addr = found_addr->ai_next)
-            {
-                if(s = socket(found_addr->ai_family, found_addr->ai_socktype, found_addr->ai_protocol); s == (uint32_t)SOCKET_ERROR)
+                if(bind(s, (sockaddr*)found_addr->ai_addr, found_addr->ai_addrlen) != -1)
+                    any = true;
+                else
                     continue;
-
-                int yes = 1;
-
-                int size = 1024 * 1024 * 5;
-                setsockopt(s, SOL_SOCKET, SO_RCVBUF, (const char*)&size, sizeof(int));
-                setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
-
-                if(broadcast)
-                {
-                    assert(setsockopt(s, SOL_SOCKET, SO_BROADCAST, (const char*)&yes, sizeof(int)) != SOCKET_ERROR);
-
-                    if(bind(s, (sockaddr*)found_addr->ai_addr, found_addr->ai_addrlen) != -1)
-                        any = true;
-                    else
-                        continue;
-                }
-
-                break;
             }
 
-            if(broadcast)
-                assert(any);
+            break;
         }
+
+        if(broadcast)
+            assert(any);
 
         assert(s);
     }
