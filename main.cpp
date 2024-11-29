@@ -79,15 +79,8 @@ struct device
     }
 };
 
-struct context
-{
-    sockaddr_storage whomst = {};
-    SOCKET sock = {};
-};
-
 struct expiring_buffer
 {
-    std::chrono::time_point<std::chrono::steady_clock> when;
     std::vector<uint8_t> data;
     uint64_t id = 0;
 
@@ -515,9 +508,9 @@ int main()
 
             if(cmd == 0x16)
             {
-                uint32_t gain = rtlsdr_get_sample_rate(dev.v);
+                uint32_t rate = rtlsdr_get_sample_rate(dev.v);
 
-                info.send_all(from, gain);
+                info.send_all(from, rate);
             }
 
             if(cmd == 0x17)
