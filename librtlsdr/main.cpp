@@ -30,6 +30,26 @@ FILE* get_file()
 //#define LOG(x) fwrite(x, strlen(x), 1, get_file())
 
 #define LOG(x)
+#define FLOG(x)
+//#define FLOG(x) fwrite(x.c_str(), x.size(), 1, get_file())
+
+struct sock_view
+{
+    sockaddr* addr = nullptr;
+    int len = 0;
+
+    sock_view(sockaddr_storage& in)
+    {
+        addr = (sockaddr*)&in;
+        len = sizeof(sockaddr_storage);
+    }
+
+    sock_view(addrinfo* inf)
+    {
+        addr = inf->ai_addr;
+        len = inf->ai_addrlen;
+    }
+};
 
 bool sendall(SOCKET s, addrinfo* ptr, const std::vector<char>& data)
 {
@@ -48,14 +68,12 @@ bool sendall(SOCKET s, addrinfo* ptr, const std::vector<char>& data)
     return false;
 }
 
-std::vector<char> readall(SOCKET s, sockaddr_storage* their_addr)
+std::vector<char> readall(SOCKET s, sock_view addr)
 {
     std::vector<char> bufsize;
     bufsize.resize(10000);
 
-    int from_len = sizeof(*their_addr);
-
-    int len = recvfrom(s, bufsize.data(), bufsize.size(), 0, (sockaddr*)their_addr, &from_len);
+    int len = recvfrom(s, bufsize.data(), bufsize.size(), 0, (sockaddr*)addr.addr, &addr.len);
 
     assert(len != -1);
 
@@ -66,50 +84,106 @@ std::vector<char> readall(SOCKET s, sockaddr_storage* their_addr)
     return bufsize;
 }
 
-struct sock
+void startup()
 {
-    SOCKET s = INVALID_SOCKET;
-    addrinfo* found_addr = nullptr;
+    static int startup = 0;
+    static WSADATA wsa_data;
 
-    sock(const std::string& port)
+    if(!startup)
     {
-        WSADATA wsa_data;
-
         if(auto result = WSAStartup(MAKEWORD(2,2), &wsa_data); result != 0)
         {
             printf("WSAStartup failed: %d\n", result);
             throw std::runtime_error("WSA Failure");
         }
 
-        addrinfo hints = {};
-        hints.ai_family = AF_INET;
-        hints.ai_socktype = SOCK_DGRAM;
+        startup = 1;
+    }
+}
 
-        addrinfo* addr = nullptr;
+struct sock
+{
+    SOCKET s = INVALID_SOCKET;
+    addrinfo* found_addr = nullptr;
+    bool broadcast = false;
 
-        if(int result = getaddrinfo("127.0.0.1", port.c_str(), &hints, &addr); result != 0)
+    sock(const std::string& address, const std::string& port, bool _broadcast) : broadcast(_broadcast)
+    {
+        startup();
+
+        if(!broadcast)
         {
-            printf("Error at socket(): %d\n", WSAGetLastError());
-            WSACleanup();
-            throw std::runtime_error("Sock Error");
-        }
+            addrinfo hints = {};
+            hints.ai_family = AF_INET;
+            hints.ai_socktype = SOCK_DGRAM;
 
-        int yes = 1;
+            addrinfo* addr = nullptr;
 
-        for(found_addr = addr; found_addr != nullptr; found_addr = found_addr->ai_next)
-        {
-            if(s = socket(found_addr->ai_family, found_addr->ai_socktype,
-                    found_addr->ai_protocol); s == (uint32_t)SOCKET_ERROR)
+            if(int result = getaddrinfo(address.c_str(), port.c_str(), &hints, &addr); result != 0)
             {
-                perror("talker: socket");
-                continue;
+                printf("Error at socket(): %d\n", WSAGetLastError());
+                WSACleanup();
+                throw std::runtime_error("Sock Error");
             }
 
-            setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
+            int yes = 1;
+
+            for(found_addr = addr; found_addr != nullptr; found_addr = found_addr->ai_next)
+            {
+                if(s = socket(found_addr->ai_family, found_addr->ai_socktype,
+                        found_addr->ai_protocol); s == (uint32_t)SOCKET_ERROR)
+                {
+                    perror("talker: socket");
+                    continue;
+                }
+
+                setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
+                int size = 1024 * 1024 * 5;
+                setsockopt(s, SOL_SOCKET, SO_RCVBUF, (const char*)&size, sizeof(int));
+
+                if(broadcast)
+                {
+                    assert(setsockopt(s, SOL_SOCKET, SO_BROADCAST, (const char*)&yes, sizeof(int)) != SOCKET_ERROR);
+                }
+
+                break;
+            }
+
+        }
+        else
+        {
+            s = socket(AF_INET, SOCK_DGRAM, 0);
+
+            int yes = 1;
+
             int size = 1024 * 1024 * 5;
             setsockopt(s, SOL_SOCKET, SO_RCVBUF, (const char*)&size, sizeof(int));
+            setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
+            assert(setsockopt(s, SOL_SOCKET, SO_BROADCAST, (const char*)&yes, sizeof(int)) != SOCKET_ERROR);
 
-            break;
+            addrinfo hints = {};
+            hints.ai_family = AF_INET;
+            hints.ai_socktype = SOCK_DGRAM;
+            hints.ai_flags = AI_PASSIVE;
+
+            addrinfo* addr = nullptr;
+
+            if(int result = getaddrinfo(nullptr, port.c_str(), &hints, &addr); result != 0)
+            {
+                printf("Error at socket(): %d\n", WSAGetLastError());
+                WSACleanup();
+                throw std::runtime_error("Sock Error");
+            }
+
+            bool any = false;
+
+            for(found_addr = addr; found_addr != nullptr; found_addr = found_addr->ai_next)
+            {
+                if(bind(s, (sockaddr*)found_addr->ai_addr, found_addr->ai_addrlen) != -1)
+                    any = true;
+            }
+
+            assert(any);
         }
 
         assert(s);
@@ -117,6 +191,8 @@ struct sock
 
     void write(const std::vector<char>& data)
     {
+        assert(!broadcast);
+
         assert(!sendall(s, found_addr, data));
     }
 
@@ -134,7 +210,7 @@ struct sock
     {
         sockaddr_storage store;
 
-        return readall(s, &store);
+        return readall(s, store);
     }
 };
 
@@ -181,7 +257,7 @@ sock* query_sock2 = nullptr;
 sock* get_data_sock()
 {
     if(data_sock2 == nullptr)
-        data_sock2 = new sock("6960");
+        data_sock2 = new sock("127.255.255.255", "6960", true);
 
     return data_sock2;
 }
@@ -189,7 +265,7 @@ sock* get_data_sock()
 sock* get_query_sock()
 {
     if(query_sock2 == nullptr)
-        query_sock2 = new sock("6961");
+        query_sock2 = new sock("127.0.0.1", "6961", false);
 
     return query_sock2;
 }
@@ -598,11 +674,12 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
         if(!has_ever_asked_for_data)
         {
             has_ever_asked_for_data = true;
-            get_data_sock()->write(std::vector<char>{0x0f});
+            get_query_sock()->write(std::vector<char>{0x0f});
         }
     }
 
-    while(!cancelled)
+    //while(!cancelled)
+    while(1)
     {
         auto data = get_data_sock()->read();
 
