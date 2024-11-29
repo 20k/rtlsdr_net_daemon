@@ -152,23 +152,18 @@ struct sock
         }
         else
         {
-            s = socket(AF_INET, SOCK_DGRAM, 0);
-
-            int yes = 1;
-
-            int size = 1024 * 1024 * 5;
-            setsockopt(s, SOL_SOCKET, SO_RCVBUF, (const char*)&size, sizeof(int));
-            setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
-            assert(setsockopt(s, SOL_SOCKET, SO_BROADCAST, (const char*)&yes, sizeof(int)) != SOCKET_ERROR);
-
             addrinfo hints = {};
             hints.ai_family = AF_INET;
             hints.ai_socktype = SOCK_DGRAM;
-            hints.ai_flags = AI_PASSIVE;
+
+            if(broadcast)
+                hints.ai_flags = AI_PASSIVE;
+
+            const char* node = broadcast ? nullptr : address.c_str();
 
             addrinfo* addr = nullptr;
 
-            if(int result = getaddrinfo(nullptr, port.c_str(), &hints, &addr); result != 0)
+            if(int result = getaddrinfo(node, port.c_str(), &hints, &addr); result != 0)
             {
                 printf("Error at socket(): %d\n", WSAGetLastError());
                 WSACleanup();
@@ -179,11 +174,30 @@ struct sock
 
             for(found_addr = addr; found_addr != nullptr; found_addr = found_addr->ai_next)
             {
-                if(bind(s, (sockaddr*)found_addr->ai_addr, found_addr->ai_addrlen) != -1)
-                    any = true;
+                if(s = socket(found_addr->ai_family, found_addr->ai_socktype, found_addr->ai_protocol); s == (uint32_t)SOCKET_ERROR)
+                    continue;
+
+                int yes = 1;
+
+                int size = 1024 * 1024 * 5;
+                setsockopt(s, SOL_SOCKET, SO_RCVBUF, (const char*)&size, sizeof(int));
+                setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(int));
+
+                if(broadcast)
+                {
+                    assert(setsockopt(s, SOL_SOCKET, SO_BROADCAST, (const char*)&yes, sizeof(int)) != SOCKET_ERROR);
+
+                    if(bind(s, (sockaddr*)found_addr->ai_addr, found_addr->ai_addrlen) != -1)
+                        any = true;
+                    else
+                        continue;
+                }
+
+                break;
             }
 
-            assert(any);
+            if(broadcast)
+                assert(any);
         }
 
         assert(s);
