@@ -39,6 +39,8 @@ struct device
             printf("%i ", gains_intl[i]);
         }
 
+        printf("\n");
+
         rtlsdr_set_tuner_gain(v, gains_intl[0]);
 
         rtlsdr_reset_buffer(v);
@@ -356,6 +358,8 @@ int main()
 
     for(uint32_t i = 0; i < dcount; i++)
         devs.emplace_back(i);
+
+    std::cout << "Found devices " << dcount << std::endl;
 
     std::vector<async_context*> contexts;
 
