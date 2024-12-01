@@ -260,7 +260,11 @@ uint32_t DLL_EXPORT rtlsdr_get_device_count(void)
 {
     LOG("Device Count");
 
-    auto data = query_read(0x10);
+    std::vector<char> to_write{0x10};
+
+    get_query_sock()->write(to_write);
+
+    auto data = get_query_sock()->read();
 
     return read_pop<int>(data).value();
 }
