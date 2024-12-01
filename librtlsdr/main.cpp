@@ -408,22 +408,13 @@ int DLL_EXPORT rtlsdr_get_device_usb_strings(uint32_t index,
     LOG("Device usb strings");
 
     if(m)
-    {
-        for(int i=0; i < 256; i++)
-            m[i] = 0;
-    }
+        memset(m, 0, 256);
 
     if(p)
-    {
-        for(int i=0; i < 256; i++)
-            p[i] = 0;
-    }
+        memset(p, 0, 256);
 
     if(s)
-    {
-        for(int i=0; i < 256; i++)
-            s[i] = 0;
-    }
+        memset(s, 0, 256);
 
     auto d_m = query_read_eidx(index, 0x24);
     auto d_p = query_read_eidx(index, 0x25);
