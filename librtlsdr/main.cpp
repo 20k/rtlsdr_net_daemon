@@ -475,7 +475,9 @@ DLL_EXPORT enum rtlsdr_tuner rtlsdr_get_tuner_type(rtlsdr_dev_t *dev)
 {
     LOG("gettt");
 
-    return RTLSDR_TUNER_R828D;
+    auto result = query_read(dev, 0x13);
+
+    return (enum rtlsdr_tuner)read_pop<int>(result).value();
 }
 
 DLL_EXPORT int rtlsdr_get_tuner_gains(rtlsdr_dev_t *dev, int *gains)
