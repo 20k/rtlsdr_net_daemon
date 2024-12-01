@@ -381,6 +381,7 @@ struct data_format
 ///so: we send a query when we open a device, and that query should return the socket for the device
 int main()
 {
+
     std::vector<device> devs;
 
     uint32_t dcount = device_count();
@@ -390,11 +391,16 @@ int main()
 
     std::cout << "Found devices " << dcount << std::endl;
 
+    auto device_to_port = [](uint32_t index) -> uint32_t
+    {
+        return 6962 + index;
+    };
+
     std::vector<async_context*> contexts;
 
     for(int i=0; i < dcount; i++)
     {
-        uint64_t root = 6962 + i;
+        uint64_t root = device_to_port(i);
 
         async_context* actx = new async_context(std::to_string(root), true);
 
@@ -625,6 +631,17 @@ int main()
                 rtlsdr_get_usb_strings(dev.v, nullptr, nullptr, s);
 
                 info.send_all(from, std::string(s));
+            }
+
+            ///query port
+            if(cmd == 0x27)
+            {
+                uint32_t port = device_to_port(device_index);
+
+                if(device_index >= devs.size())
+                    port = 0;
+
+                info.send_all(from, port);
             }
 
             /*if(cmd == 0x0f)
