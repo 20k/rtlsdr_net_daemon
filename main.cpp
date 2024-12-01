@@ -348,6 +348,34 @@ void add(std::vector<char>& in, const std::vector<int> v)
         add(in, i);
 }
 
+struct data_format
+{
+    uint8_t cmd = 0;
+    std::optional<uint32_t> index = 0;
+    std::optional<uint32_t> param = 0;
+
+    void load(const std::vector<char>& in)
+    {
+        if(in.size() == 0)
+            return;
+
+        if(in.size() >= 1)
+            cmd = in[0];
+
+        if(in.size() >= sizeof(char) + sizeof(uint32_t))
+        {
+            index = {};
+            memcpy(&index.value(), &in[1], sizeof(uint32_t));
+        }
+
+        if(in.size() >= sizeof(char) + sizeof(uint32_t)*2)
+        {
+            param = {};
+            memcpy(&param.value(), &in[5], sizeof(uint32_t));
+        }
+    }
+};
+
 ///todo: multiple devices
 ///so: we send a query when we open a device, and that query should return the socket for the device
 int main()
@@ -431,13 +459,19 @@ int main()
 
     while(1)
     {
-        std::vector<std::pair<std::vector<char>, sockaddr_storage>> all_dat;
+        std::vector<std::pair<data_format, sockaddr_storage>> all_dat;
 
         while(info.can_read())
         {
-            all_dat.push_back(info.read_all());
+            auto [dat, storage] = info.read_all();
+
+            data_format fmt;
+            fmt.load(dat);
+
+            all_dat.push_back({fmt, storage});
         }
 
+        #if 0
         auto count_type = [&](unsigned char type)
         {
             int counts = 0;
@@ -491,18 +525,14 @@ int main()
         remove_all_except_last(0x05);
         remove_all_except_last(0x0d);
         remove_all_except_last(0x21);
+        #endif
 
         if(all_dat.size() == 0)
             sf::sleep(sf::milliseconds(1));
 
-        for(auto& [data, from] : all_dat)
+        for(auto& [fmt, from] : all_dat)
         {
-            if(data.size() < 1)
-                continue;
-
-            device& dev = devs.at(0);
-
-            unsigned char cmd = data[0];
+            uint8_t cmd = fmt.cmd;
 
             printf("Qcmd %i\n", cmd);
 
@@ -511,15 +541,22 @@ int main()
                 info.send_all(from, rtlsdr_get_device_count());
             }
 
-            if(cmd == 0x11 && data.size() >= 5)
+            if(cmd == 0x11)
             {
-                uint32_t idx = 0;
-                memcpy(&idx, data.data() + 1, sizeof(idx));
-
-                std::string name(rtlsdr_get_device_name(idx));
+                std::string name(rtlsdr_get_device_name(fmt.index.value_or(0)));
 
                 info.send_all(from, name);
             }
+
+            if(!fmt.index)
+                continue;
+
+            uint32_t device_index = fmt.index.value();
+
+            if(device_index >= devs.size())
+                continue;
+
+            device& dev = devs.at(device_index);
 
             if(cmd == 0x12)
             {
@@ -625,11 +662,10 @@ int main()
                 }, ctx).detach();
             }*/
 
-            if(data.size() < sizeof(char) + sizeof(int))
+            if(!fmt.param)
                 continue;
 
-            unsigned int param = 0;
-            memcpy((void*)&param, (void*)&data[1], sizeof(int));
+            uint32_t param = fmt.param.value();
 
             printf("Got wcmd %i\n", cmd);
 
