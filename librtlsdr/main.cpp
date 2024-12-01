@@ -252,7 +252,7 @@ uint32_t DLL_EXPORT rtlsdr_get_device_count(void)
 {
     LOG("Device Count");
 
-    return 1;
+    return query_read(0x10);
 }
 
 const char* DLL_EXPORT rtlsdr_get_device_name(uint32_t index)
