@@ -10,31 +10,36 @@
 
 std::atomic_int global_close{0};
 
+uint32_t device_count()
+{
+    return rtlsdr_get_device_count();
+}
+
 struct device
 {
     rtlsdr_dev_t* v = nullptr;
     std::vector<int> gains_intl;
 
-    device()
+    device(uint32_t index)
     {
-        assert(rtlsdr_open(&v, 0) == 0);
+        assert(rtlsdr_open(&v, index) == 0);
 
         rtlsdr_set_sample_rate(v, 2400000);
 
-        int gains[128] = {};
-        int ngain = rtlsdr_get_tuner_gains(v, gains);
-
-        for(int i=0; i < ngain; i++)
-        {
-            printf("%i ", gains[i]);
-        }
+        int ngain = rtlsdr_get_tuner_gains(v, nullptr);
 
         gains_intl.resize(ngain);
 
-        for(int i=0; i < ngain && i < 128; i++)
-            gains_intl[i] = gains[i];
+        ngain = rtlsdr_get_tuner_gains(v, gains_intl.data());
 
-        rtlsdr_set_tuner_gain(v, gains[0]);
+        assert(ngain == gains_intl.size());
+
+        for(int i=0; i < gains_intl.size(); i++)
+        {
+            printf("%i ", gains_intl[i]);
+        }
+
+        rtlsdr_set_tuner_gain(v, gains_intl[0]);
 
         rtlsdr_reset_buffer(v);
     }
@@ -45,6 +50,15 @@ struct device
         gains_intl = other.gains_intl;
 
         other.v = nullptr;
+    }
+
+    device& operator=(device&& other)
+    {
+        v = other.v;
+        gains_intl = other.gains_intl;
+
+        other.v = nullptr;
+        return *this;
     }
 
     ~device()
@@ -326,7 +340,12 @@ int main()
 {
     std::vector<device> devs;
 
-    devs.emplace_back();
+    uint32_t dcount = device_count();
+
+    for(uint32_t i = 0; i < dcount; i++)
+    {
+        devs.emplace_back(i);
+    }
 
     for(auto& dev : devs)
         dev.set_freq(1000000);
