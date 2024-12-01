@@ -102,40 +102,6 @@ struct device
     }
 };
 
-struct global_queue
-{
-    std::vector<std::vector<uint8_t>> buffers;
-    std::mutex mut;
-
-    void add_buffer(std::vector<uint8_t>&& data)
-    {
-        std::lock_guard lock(mut);
-
-        buffers.emplace_back(std::move(data));
-    }
-
-    std::vector<std::vector<uint8_t>> pop_buffers()
-    {
-        std::lock_guard lock(mut);
-
-        std::vector<std::vector<uint8_t>> ret = std::move(buffers);
-        buffers.clear();
-        return ret;
-    }
-};
-
-global_queue gqueue;
-
-void pipe_data_into_queue(unsigned char* buf, uint32_t len, void* ctx)
-{
-    std::vector<uint8_t> data;
-    data.resize(len);
-
-    memcpy(data.data(), buf, len);
-
-    gqueue.add_buffer(std::move(data));
-}
-
 struct sock_view
 {
     sockaddr* addr = nullptr;
@@ -310,6 +276,52 @@ struct sock
     }
 };
 
+struct global_queue
+{
+    std::vector<std::vector<uint8_t>> buffers;
+    std::mutex mut;
+
+    void add_buffer(std::vector<uint8_t>&& data)
+    {
+        std::lock_guard lock(mut);
+
+        buffers.emplace_back(std::move(data));
+    }
+
+    std::vector<std::vector<uint8_t>> pop_buffers()
+    {
+        std::lock_guard lock(mut);
+
+        std::vector<std::vector<uint8_t>> ret = std::move(buffers);
+        buffers.clear();
+        return ret;
+    }
+};
+
+struct async_context
+{
+    global_queue q;
+    sock s;
+
+    async_context(const std::string& port, bool broadcast) : s(port, broadcast)
+    {
+
+    }
+};
+
+void pipe_data_into_queue(unsigned char* buf, uint32_t len, void* ctx)
+{
+    async_context* actx = (async_context*)ctx;
+
+    std::vector<uint8_t> data;
+    data.resize(len);
+
+    memcpy(data.data(), buf, len);
+
+    actx->q.add_buffer(std::move(data));
+}
+
+
 void add(std::vector<char>& in, int v)
 {
     auto len = in.size();
@@ -343,22 +355,33 @@ int main()
     uint32_t dcount = device_count();
 
     for(uint32_t i = 0; i < dcount; i++)
-    {
         devs.emplace_back(i);
+
+    std::vector<async_context*> contexts;
+
+    for(int i=0; i < dcount; i++)
+    {
+        uint64_t root = 6962 + i;
+
+        async_context* actx = new async_context(std::to_string(root), true);
+
+        contexts.push_back(actx);
     }
 
     for(auto& dev : devs)
         dev.set_freq(1000000);
 
-    for(device& dev : devs)
+    for(int i=0; i < dcount; i++)
     {
+        device& dev = devs[i];
+        async_context* actx = contexts[i];
+
         std::jthread([&]()
         {
-            rtlsdr_read_async(dev.v, pipe_data_into_queue, nullptr, 0, 0);
+            rtlsdr_read_async(dev.v, pipe_data_into_queue, actx, 0, 0);
         }).detach();
     }
 
-    sock sck("6960", true);
     sock info("6961", false);
 
     std::jthread([&]()
@@ -368,31 +391,37 @@ int main()
             if(global_close)
                 break;
 
-            auto to_write = gqueue.pop_buffers();
+            bool all_zero = true;
 
-            if(to_write.size() == 0)
+            for(async_context* actx : contexts)
             {
-                sf::sleep(sf::milliseconds(1));
-                continue;
-            }
+                auto to_write = actx->q.pop_buffers();
 
-            for(std::vector<uint8_t>& buf : to_write)
-            {
-                int chunk_size = 1024*8;
+                if(to_write.size() == 0)
+                    continue;
 
-                for(int i=0; i < buf.size(); i += chunk_size)
+                all_zero = false;
+
+                for(std::vector<uint8_t>& buf : to_write)
                 {
-                    int fin = std::min(i + chunk_size, (int)buf.size());
+                    int chunk_size = 1024*8;
 
-                    int num = sendto(sck.listen_sock, (const char*)(buf.data() + i), fin - i, 0, (sockaddr*)sck.broadcast_address->ai_addr, sck.broadcast_address->ai_addrlen);
+                    for(int i=0; i < buf.size(); i += chunk_size)
+                    {
+                        int fin = std::min(i + chunk_size, (int)buf.size());
 
-                    if(num == -1)
-                        return;
+                        int num = sendto(actx->s.listen_sock, (const char*)(buf.data() + i), fin - i, 0, (sockaddr*)actx->s.broadcast_address->ai_addr, actx->s.broadcast_address->ai_addrlen);
 
-                    assert(num == (fin - i));
+                        if(num == -1)
+                            return;
+
+                        assert(num == (fin - i));
+                    }
                 }
             }
 
+            if(all_zero)
+                sf::sleep(sf::milliseconds(1));
         }
     }).detach();
 

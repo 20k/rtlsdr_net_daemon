@@ -218,7 +218,7 @@ sock* query_sock2 = nullptr;
 sock* get_data_sock()
 {
     if(data_sock2 == nullptr)
-        data_sock2 = new sock("127.255.255.255", "6960", true);
+        data_sock2 = new sock("127.255.255.255", "6962", true);
 
     return data_sock2;
 }
