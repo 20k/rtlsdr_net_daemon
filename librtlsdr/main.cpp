@@ -497,6 +497,9 @@ DLL_EXPORT int rtlsdr_set_xtal_freq(rtlsdr_dev_t *dev, uint32_t rtl_freq, uint32
 {
     LOG("Setx");
 
+    data_write(dev, 0x0b, rtl_freq);
+    data_write(dev, 0x0c, tuner_freq);
+
     return 0;
 }
 
