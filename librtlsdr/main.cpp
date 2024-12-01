@@ -269,13 +269,7 @@ const char* DLL_EXPORT rtlsdr_get_device_name(uint32_t index)
 {
     LOG("Device name");
 
-    std::vector<char> out;
-    out.push_back(0x11);
-    add(out, index);
-
-    get_query_sock()->write(out);
-
-    auto data = get_query_sock()->read();
+    auto data = query_read(0x11);
 
     std::string* leaked = new std::string(data.begin(), data.end());
 
@@ -327,9 +321,7 @@ DLL_EXPORT int rtlsdr_get_xtal_freq(rtlsdr_dev_t *dev, uint32_t *rtl_freq, uint3
 {
     LOG("Getx");
 
-    get_query_sock()->write({0x19});
-
-    std::vector<char> read = get_query_sock()->read();
+    std::vector<char> read = query_read(0x19);
 
     assert(read.size() == 8);
 
@@ -458,9 +450,7 @@ DLL_EXPORT int rtlsdr_get_tuner_gains(rtlsdr_dev_t *dev, int *gains)
 {
     LOG("gettg");
 
-    get_query_sock()->write({0x14});
-
-    auto result = get_query_sock()->read();
+    auto result = query_read(0x14);
 
     uint32_t len = read_pop<uint32_t>(result).value();
 
@@ -627,8 +617,8 @@ DLL_EXPORT int rtlsdr_wait_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
     return rtlsdr_read_async(dev, cb, ctx, 0, 0);
 }
 
-std::mutex mut;
-bool has_ever_asked_for_data = false;
+//std::mutex mut;
+//bool has_ever_asked_for_data = false;
 
 DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len)
 {
@@ -639,7 +629,7 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
     std::vector<unsigned char> next_data;
     int pop_size = 65536/4;
 
-    {
+    /*{
         std::lock_guard guard(mut);
 
         if(!has_ever_asked_for_data)
@@ -647,7 +637,7 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
             has_ever_asked_for_data = true;
             get_query_sock()->write(std::vector<char>{0x0f});
         }
-    }
+    }*/
 
     while(!cancelled)
     {
