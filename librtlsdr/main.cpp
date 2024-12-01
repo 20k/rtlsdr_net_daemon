@@ -212,16 +212,16 @@ void add(std::vector<char>& in, const std::vector<int> v)
 }
 
 
-sock* data_sock2 = nullptr;
+//sock* data_sock2 = nullptr;
 sock* query_sock2 = nullptr;
 
-sock* get_data_sock()
+/*sock* get_data_sock()
 {
     if(data_sock2 == nullptr)
         data_sock2 = new sock("127.255.255.255", "6962", true);
 
     return data_sock2;
-}
+}*/
 
 sock* get_query_sock()
 {
@@ -231,29 +231,48 @@ sock* get_query_sock()
     return query_sock2;
 }
 
-void data_write(char type, auto what)
+struct context
 {
+    uint32_t index = 0;
+    std::string port;
+
+    sock* sck = nullptr;
+    std::atomic_bool cancelled{false};
+};
+
+void data_write(rtlsdr_dev_t* rctx, char type, auto what)
+{
+    assert(rctx);
+
+    context* ctx = (context*)rctx;
+
     std::vector<char> data;
     data.push_back(type);
 
-    uint32_t index = 0;
-    add(data, index);
-
+    add(data, ctx->index);
     add(data, what);
 
     get_query_sock()->write(data);
 }
 
-std::vector<char> query_read(char type)
+std::vector<char> query_read_eidx(uint32_t index, char type)
 {
     std::vector<char> to_write{type};
 
-    uint32_t index = 0;
     add(to_write, index);
 
     get_query_sock()->write(to_write);
 
     return get_query_sock()->read();
+}
+
+std::vector<char> query_read(rtlsdr_dev_t* rctx, char type)
+{
+    assert(rctx);
+
+    context* ctx = (context*)rctx;
+
+    return query_read_eidx(ctx->index, type);
 }
 
 uint32_t DLL_EXPORT rtlsdr_get_device_count(void)
@@ -273,7 +292,7 @@ const char* DLL_EXPORT rtlsdr_get_device_name(uint32_t index)
 {
     LOG("Device name");
 
-    auto data = query_read(0x11);
+    auto data = query_read_eidx(index, 0x11);
 
     std::string* leaked = new std::string(data.begin(), data.end());
 
@@ -286,67 +305,6 @@ int DLL_EXPORT rtlsdr_get_device_usb_strings(uint32_t index,
 					     char* s)
 {
     LOG("Device usb strings");
-
-    return rtlsdr_get_usb_strings(nullptr, m, p, s);
-}
-
-int DLL_EXPORT rtlsdr_get_index_by_serial(const char* serial)
-{
-    LOG("Idx By Serial");
-
-    return 0;
-}
-
-char data_storage[1024] = {};
-
-DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
-{
-    LOG("Open");
-
-    dev[0] = (rtlsdr_dev_t*)data_storage;
-    return 0;
-}
-
-DLL_EXPORT int rtlsdr_close(rtlsdr_dev_t *dev)
-{
-    LOG("Close");
-
-    return 0;
-}
-
-DLL_EXPORT int rtlsdr_set_xtal_freq(rtlsdr_dev_t *dev, uint32_t rtl_freq, uint32_t tuner_freq)
-{
-    LOG("Setx");
-
-    return 0;
-}
-
-DLL_EXPORT int rtlsdr_get_xtal_freq(rtlsdr_dev_t *dev, uint32_t *rtl_freq, uint32_t *tuner_freq)
-{
-    LOG("Getx");
-
-    std::vector<char> read = query_read(0x19);
-
-    assert(read.size() == 8);
-
-    uint32_t freq1 = {};
-    uint32_t freq2 = {};
-
-    memcpy(&freq1, read.data(), sizeof(uint32_t));
-    memcpy(&freq2, read.data() + sizeof(uint32_t), sizeof(uint32_t));
-
-    if(rtl_freq)
-        *rtl_freq = freq1;
-
-    if(tuner_freq)
-        *tuner_freq = freq2;
-
-    return 0;
-}
-
-DLL_EXPORT int rtlsdr_get_usb_strings(rtlsdr_dev_t *dev, char* m, char* p, char* s)
-{
-    LOG("usbs");
 
     if(m)
     {
@@ -366,9 +324,9 @@ DLL_EXPORT int rtlsdr_get_usb_strings(rtlsdr_dev_t *dev, char* m, char* p, char*
             s[i] = 0;
     }
 
-    auto d_m = query_read(0x24);
-    auto d_p = query_read(0x25);
-    auto d_s = query_read(0x26);
+    auto d_m = query_read_eidx(index, 0x24);
+    auto d_p = query_read_eidx(index, 0x25);
+    auto d_s = query_read_eidx(index, 0x26);
 
     std::string s_m(d_m.begin(), d_m.end());
     std::string s_p(d_p.begin(), d_p.end());
@@ -393,6 +351,85 @@ DLL_EXPORT int rtlsdr_get_usb_strings(rtlsdr_dev_t *dev, char* m, char* p, char*
     return 0;
 }
 
+int DLL_EXPORT rtlsdr_get_index_by_serial(const char* serial)
+{
+    LOG("Idx By Serial");
+
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
+{
+    LOG("Open");
+
+    context* out = new context();
+    out->index = index;
+
+    auto data = query_read_eidx(index, 0x27);
+
+    uint32_t port = read_pop<uint32_t>(data).value();
+
+    out->port = std::to_string(port);
+
+    out->sck = new sock("127.255.255.255", out->port, true);
+
+    dev[0] = (rtlsdr_dev_t*)out;
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_close(rtlsdr_dev_t *dev)
+{
+    LOG("Close");
+
+    if(dev == nullptr)
+        return -1;
+
+    context* ctx = (context*)dev;
+    delete ctx->sck;
+    delete ctx;
+
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_set_xtal_freq(rtlsdr_dev_t *dev, uint32_t rtl_freq, uint32_t tuner_freq)
+{
+    LOG("Setx");
+
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_get_xtal_freq(rtlsdr_dev_t *dev, uint32_t *rtl_freq, uint32_t *tuner_freq)
+{
+    LOG("Getx");
+
+    std::vector<char> read = query_read(dev, 0x19);
+
+    assert(read.size() == 8);
+
+    uint32_t freq1 = {};
+    uint32_t freq2 = {};
+
+    memcpy(&freq1, read.data(), sizeof(uint32_t));
+    memcpy(&freq2, read.data() + sizeof(uint32_t), sizeof(uint32_t));
+
+    if(rtl_freq)
+        *rtl_freq = freq1;
+
+    if(tuner_freq)
+        *tuner_freq = freq2;
+
+    return 0;
+}
+
+DLL_EXPORT int rtlsdr_get_usb_strings(rtlsdr_dev_t *dev, char* m, char* p, char* s)
+{
+    LOG("usbs");
+
+    assert(dev);
+
+    return rtlsdr_get_device_usb_strings(((context*)dev)->index, m, p, s);
+}
+
 DLL_EXPORT int rtlsdr_write_eeprom(rtlsdr_dev_t *dev, uint8_t* data, uint8_t offset, uint16_t len)
 {
     LOG("w/e");
@@ -411,7 +448,7 @@ DLL_EXPORT int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 {
     LOG("setcq");
 
-    data_write(0x01, freq);
+    data_write(dev, 0x01, freq);
 
     return 0;
 }
@@ -420,7 +457,7 @@ DLL_EXPORT uint32_t rtlsdr_get_center_freq(rtlsdr_dev_t *dev)
 {
     LOG("getcq");
 
-    auto result = query_read(0x20);
+    auto result = query_read(dev, 0x20);
 
     return read_pop<uint32_t>(result).value();
 }
@@ -429,7 +466,7 @@ DLL_EXPORT int rtlsdr_set_freq_correction(rtlsdr_dev_t *dev, int ppm)
 {
     LOG("fsetfq");
 
-    data_write(0x05, ppm);
+    data_write(dev, 0x05, ppm);
 
     return 0;
 }
@@ -438,11 +475,12 @@ DLL_EXPORT int rtlsdr_get_freq_correction(rtlsdr_dev_t *dev)
 {
     LOG("getf");
 
-    auto result = query_read(0x12);
+    auto result = query_read(dev, 0x12);
 
     return read_pop<int>(result).value();
 }
 
+///todo: dome
 DLL_EXPORT enum rtlsdr_tuner rtlsdr_get_tuner_type(rtlsdr_dev_t *dev)
 {
     LOG("gettt");
@@ -454,7 +492,7 @@ DLL_EXPORT int rtlsdr_get_tuner_gains(rtlsdr_dev_t *dev, int *gains)
 {
     LOG("gettg");
 
-    auto result = query_read(0x14);
+    auto result = query_read(dev, 0x14);
 
     uint32_t len = read_pop<uint32_t>(result).value();
 
@@ -473,7 +511,7 @@ DLL_EXPORT int rtlsdr_set_tuner_gain(rtlsdr_dev_t *dev, int gain)
 {
     LOG("settg");
 
-    data_write(0x04, gain);
+    data_write(dev, 0x04, gain);
     return 0;
 }
 
@@ -481,7 +519,7 @@ DLL_EXPORT int rtlsdr_set_tuner_bandwidth(rtlsdr_dev_t *dev, uint32_t bw)
 {
     LOG("settb");
 
-    data_write(0x21, bw);
+    data_write(dev, 0x21, bw);
 
     return 0;
 }
@@ -490,7 +528,7 @@ DLL_EXPORT int rtlsdr_get_tuner_gain(rtlsdr_dev_t *dev)
 {
     LOG("gettg");
 
-    auto data = query_read(0x15);
+    auto data = query_read(dev, 0x15);
 
     return read_pop<int>(data).value();
 }
@@ -506,7 +544,7 @@ DLL_EXPORT int rtlsdr_set_tuner_gain_mode(rtlsdr_dev_t *dev, int manual)
 {
     LOG("settgm");
 
-    data_write(0x03, manual);
+    data_write(dev, 0x03, manual);
 
     return 0;
 }
@@ -515,7 +553,7 @@ DLL_EXPORT int rtlsdr_set_sample_rate(rtlsdr_dev_t *dev, uint32_t rate)
 {
     LOG("setsr");
 
-    data_write(0x02, rate);
+    data_write(dev, 0x02, rate);
 
     return 0;
 }
@@ -524,7 +562,7 @@ DLL_EXPORT uint32_t rtlsdr_get_sample_rate(rtlsdr_dev_t *dev)
 {
     LOG("getsr");
 
-    auto data = query_read(0x16);
+    auto data = query_read(dev, 0x16);
 
     return read_pop<uint32_t>(data).value();
 }
@@ -540,7 +578,7 @@ DLL_EXPORT int rtlsdr_set_agc_mode(rtlsdr_dev_t *dev, int on)
 {
     LOG("agc");
 
-    data_write(0x08, on);
+    data_write(dev, 0x08, on);
 
     return 0;
 }
@@ -549,7 +587,7 @@ DLL_EXPORT int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 {
     LOG("sds");
 
-    data_write(0x09, on);
+    data_write(dev, 0x09, on);
     return 0;
 }
 
@@ -557,7 +595,7 @@ DLL_EXPORT int rtlsdr_get_direct_sampling(rtlsdr_dev_t *dev)
 {
     LOG("getds");
 
-    auto dat = query_read(0x17);
+    auto dat = query_read(dev, 0x17);
     return read_pop<int>(dat).value();
 }
 
@@ -565,7 +603,7 @@ DLL_EXPORT int rtlsdr_set_offset_tuning(rtlsdr_dev_t *dev, int on)
 {
     LOG("sot");
 
-    data_write(0x0a, on);
+    data_write(dev, 0x0a, on);
     return 0;
 }
 
@@ -573,7 +611,7 @@ DLL_EXPORT int rtlsdr_get_offset_tuning(rtlsdr_dev_t *dev)
 {
     LOG("got");
 
-    auto dat = query_read(0x18);
+    auto dat = query_read(dev, 0x18);
     return read_pop<int>(dat).value();
 }
 
@@ -588,13 +626,17 @@ DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_re
 {
     LOG("reads");
 
-    std::vector<char> data = get_data_sock()->read();
+    assert(dev);
+
+    context* ctx = (context*)dev;
+
+    std::vector<char> data = ctx->sck->read();
 
     assert(buf);
 
     while((int)data.size() < len)
     {
-        auto next = get_data_sock()->read();
+        auto next = ctx->sck->read();
 
         data.insert(data.end(), next.begin(), next.end());
     }
@@ -624,14 +666,21 @@ DLL_EXPORT int rtlsdr_wait_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
 //std::mutex mut;
 //bool has_ever_asked_for_data = false;
 
-DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len)
+DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *user_ctx, uint32_t buf_num, uint32_t buf_len)
 {
     LOG("reada");
 
-    cancelled = 0;
+    assert(dev);
+
+    context* ctx = (context*)dev;
+
+    ctx->cancelled = false;
 
     std::vector<unsigned char> next_data;
-    int pop_size = 65536/4;
+    uint32_t pop_size = 65536/4;
+
+    if(buf_len > 0)
+        pop_size = buf_len;
 
     /*{
         std::lock_guard guard(mut);
@@ -643,15 +692,15 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
         }
     }*/
 
-    while(!cancelled)
+    while(!ctx->cancelled)
     {
-        auto data = get_data_sock()->read();
+        auto data = ctx->sck->read();
 
         next_data.insert(next_data.end(), data.begin(), data.end());
 
-        if((int)next_data.size() >= pop_size)
+        if((uint32_t)next_data.size() >= pop_size)
         {
-            cb((unsigned char*)next_data.data(), (uint32_t)next_data.size(), ctx);
+            cb((unsigned char*)next_data.data(), (uint32_t)next_data.size(), user_ctx);
 
             next_data.clear();
         }
@@ -668,7 +717,11 @@ DLL_EXPORT int rtlsdr_cancel_async(rtlsdr_dev_t *dev)
 {
     LOG("cancel");
 
-    cancelled = 1;
+    assert(dev);
+
+    context* ctx = (context*)dev;
+
+    ctx->cancelled = true;
     return 0;
 }
 
@@ -676,7 +729,7 @@ DLL_EXPORT int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on)
 {
     LOG("settee");
 
-    data_write(0x0e, on);
+    data_write(dev, 0x0e, on);
     return 0;
 }
 
