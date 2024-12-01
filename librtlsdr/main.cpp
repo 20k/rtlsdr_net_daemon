@@ -211,17 +211,7 @@ void add(std::vector<char>& in, const std::vector<int> v)
         add(in, i);
 }
 
-
-//sock* data_sock2 = nullptr;
 sock* query_sock2 = nullptr;
-
-/*sock* get_data_sock()
-{
-    if(data_sock2 == nullptr)
-        data_sock2 = new sock("127.255.255.255", "6962", true);
-
-    return data_sock2;
-}*/
 
 sock* get_query_sock()
 {
