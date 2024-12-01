@@ -309,6 +309,7 @@ void add(std::vector<char>& in, const std::vector<int> v)
         add(in, i);
 }
 
+///todo: multiple devices
 int main()
 {
     device dev;
@@ -332,29 +333,29 @@ int main()
 
             auto to_write = gqueue.pop_buffers();
 
-            if(to_write.size() > 0)
-            {
-                for(std::vector<uint8_t>& buf : to_write)
-                {
-                    int chunk_size = 1024*8;
-
-                    for(int i=0; i < buf.size(); i += chunk_size)
-                    {
-                        int fin = std::min(i + chunk_size, (int)buf.size());
-
-                        int num = sendto(sck.listen_sock, (const char*)(buf.data() + i), fin - i, 0, (sockaddr*)sck.broadcast_address->ai_addr, sck.broadcast_address->ai_addrlen);
-
-                        if(num == -1)
-                            return;
-
-                        assert(num == (fin - i));
-                    }
-                }
-            }
-            else
+            if(to_write.size() == 0)
             {
                 sf::sleep(sf::milliseconds(1));
+                continue;
             }
+
+            for(std::vector<uint8_t>& buf : to_write)
+            {
+                int chunk_size = 1024*8;
+
+                for(int i=0; i < buf.size(); i += chunk_size)
+                {
+                    int fin = std::min(i + chunk_size, (int)buf.size());
+
+                    int num = sendto(sck.listen_sock, (const char*)(buf.data() + i), fin - i, 0, (sockaddr*)sck.broadcast_address->ai_addr, sck.broadcast_address->ai_addrlen);
+
+                    if(num == -1)
+                        return;
+
+                    assert(num == (fin - i));
+                }
+            }
+
         }
     }).detach();
 
