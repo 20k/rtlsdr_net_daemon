@@ -241,6 +241,23 @@ struct context
 
     sock* sck = nullptr;
     std::atomic_bool cancelled{false};
+
+    sock* get_sock()
+    {
+        if(sck == nullptr)
+            sck = new sock("127.255.255.255", port, true);
+
+        return sck;
+    }
+
+    void remove_sock()
+    {
+        if(!sck)
+            return;
+
+        delete sck;
+        sck = nullptr;
+    }
 };
 
 void data_write(rtlsdr_dev_t* rctx, char type, auto what)
@@ -361,8 +378,6 @@ int DLL_EXPORT rtlsdr_get_index_by_serial(const char* serial)
     return 0;
 }
 
-std::atomic_int cnt{0};
-
 DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
 {
     LOG("Open");
@@ -376,27 +391,20 @@ DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
 
     out->port = std::to_string(port);
 
-    out->sck = new sock("127.255.255.255", out->port, true);
-
-    assert(cnt == 0);
-
-    cnt++;
-
     dev[0] = (rtlsdr_dev_t*)out;
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_close(rtlsdr_dev_t *dev)
 {
-    cnt--;
-
     LOG("Close");
 
     if(dev == nullptr)
         return -1;
 
     context* ctx = (context*)dev;
-    delete ctx->sck;
+
+    ctx->remove_sock();
     delete ctx;
 
     return 0;
@@ -643,13 +651,13 @@ DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_re
 
     context* ctx = (context*)dev;
 
-    std::vector<char> data = ctx->sck->read();
+    std::vector<char> data = ctx->get_sock()->read();
 
     assert(buf);
 
     while((int)data.size() < len)
     {
-        auto next = ctx->sck->read();
+        auto next = ctx->get_sock()->read();
 
         data.insert(data.end(), next.begin(), next.end());
     }
@@ -707,9 +715,9 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
 
     while(!ctx->cancelled)
     {
-        while(ctx->sck->can_read())
+        //while(ctx->sck->can_read())
         {
-            auto data = ctx->sck->read();
+            auto data = ctx->get_sock()->read();
 
             next_data.insert(next_data.end(), data.begin(), data.end());
         }
@@ -725,6 +733,8 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
             //sf::sleep(sf::milliseconds(1));
         }
     }
+
+    ctx->remove_sock();
 
     return 0;
 }
