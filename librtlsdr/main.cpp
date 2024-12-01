@@ -671,8 +671,8 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
     std::vector<unsigned char> next_data;
     uint32_t pop_size = 65536/4;
 
-    if(buf_len > 0)
-        pop_size = buf_len;
+    //if(buf_len > 0)
+    //    pop_size = buf_len;
 
     /*{
         std::lock_guard guard(mut);
