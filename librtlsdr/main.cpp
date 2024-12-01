@@ -12,6 +12,7 @@
 #include <atomic>
 #include <SFML/System/Sleep.hpp>
 #include <ranges>
+#include <thread>
 
 #if 0
 // a sample exported function
@@ -150,6 +151,15 @@ struct sock
         assert(s);
     }
 
+    void stop()
+    {
+        #ifdef _WIN32
+        closesocket(s);
+        #else
+        close(s);
+        #endif
+    }
+
     void write(const std::vector<char>& data)
     {
         assert(!broadcast);
@@ -239,24 +249,95 @@ struct context
     uint32_t index = 0;
     std::string port;
 
-    sock* sck = nullptr;
     std::atomic_bool cancelled{false};
 
-    sock* get_sock()
-    {
-        if(sck == nullptr)
-            sck = new sock("127.255.255.255", port, true);
+    std::mutex mut;
+    std::vector<char> data_queue;
 
-        return sck;
+    std::jthread data_thread;
+    uint32_t max_bytes = 1024 * 1024 * 10;
+    std::atomic_bool has_data_queue{false};
+    std::atomic_bool kill_data{false};
+
+    void start_data_queue()
+    {
+        has_data_queue = true;
+
+        data_thread = std::jthread([&](std::stop_token tok)
+        {
+            sock sck("127.255.255.255", port, true);
+
+            while(!tok.stop_requested())
+            {
+                while(sck.can_read() && !tok.stop_requested())
+                {
+                    std::vector<char> data = sck.read();
+
+                    std::lock_guard guard(mut);
+
+                    data_queue.insert(data_queue.end(), data.begin(), data.end());
+
+                    if(data_queue.size() > max_bytes)
+                    {
+                        uint32_t extra = data_queue.size() - max_bytes;
+
+                        data_queue = std::vector<char>(data_queue.begin() + extra, data_queue.end());
+                    }
+
+                    if(kill_data)
+                    {
+                        data_queue.clear();
+                        kill_data = false;
+                    }
+                }
+
+                //sf::sleep(sf::milliseconds(1));
+            }
+
+            {
+                std::lock_guard guard(mut);
+                data_queue.clear();
+            }
+
+            sck.stop();
+        });
     }
 
-    void remove_sock()
+    uint32_t data_queue_size()
     {
-        if(!sck)
+        std::lock_guard guard(mut);
+        return data_queue.size();
+    }
+
+    void clear_data_queue()
+    {
+        stop_data_queue();
+        start_data_queue();
+
+        //kill_data = true;
+    }
+
+    std::vector<char> pop_data_queue()
+    {
+        std::vector<char> ret;
+
+        std::lock_guard guard(mut);
+
+        ret = std::move(data_queue);
+        data_queue.clear();
+
+        return ret;
+    }
+
+    void stop_data_queue()
+    {
+        if(!has_data_queue)
             return;
 
-        delete sck;
-        sck = nullptr;
+        data_thread.request_stop();
+        data_thread.join();
+
+        has_data_queue = false;
     }
 };
 
@@ -390,6 +471,7 @@ DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
     uint32_t port = read_pop<uint32_t>(data).value();
 
     out->port = std::to_string(port);
+    out->start_data_queue();
 
     dev[0] = (rtlsdr_dev_t*)out;
     return 0;
@@ -404,7 +486,8 @@ DLL_EXPORT int rtlsdr_close(rtlsdr_dev_t *dev)
 
     context* ctx = (context*)dev;
 
-    ctx->remove_sock();
+    ctx->stop_data_queue();
+
     delete ctx;
 
     return 0;
@@ -649,15 +732,17 @@ DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_re
 
     assert(dev);
 
+    assert(false);
+
     context* ctx = (context*)dev;
 
-    std::vector<char> data = ctx->get_sock()->read();
+    std::vector<char> data = ctx->pop_data_queue();
 
     assert(buf);
 
     while((int)data.size() < len)
     {
-        auto next = ctx->get_sock()->read();
+        auto next = ctx->pop_data_queue();
 
         data.insert(data.end(), next.begin(), next.end());
     }
@@ -696,6 +781,7 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
     context* ctx = (context*)dev;
 
     ctx->cancelled = false;
+    ctx->clear_data_queue();
 
     std::vector<unsigned char> next_data;
     uint32_t pop_size = 65536/4;
@@ -717,7 +803,7 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
     {
         //while(ctx->sck->can_read())
         {
-            auto data = ctx->get_sock()->read();
+            auto data = ctx->pop_data_queue();
 
             next_data.insert(next_data.end(), data.begin(), data.end());
         }
@@ -733,8 +819,6 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
             //sf::sleep(sf::milliseconds(1));
         }
     }
-
-    ctx->remove_sock();
 
     return 0;
 }
