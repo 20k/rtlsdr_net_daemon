@@ -730,9 +730,10 @@ DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_re
 {
     LOG("reads");
 
-    assert(dev);
+    if(len < 0)
+        return 0;
 
-    assert(false);
+    assert(dev);
 
     context* ctx = (context*)dev;
 
@@ -740,7 +741,7 @@ DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_re
 
     assert(buf);
 
-    while((int)data.size() < len)
+    while((uint32_t)data.size() < (uint32_t)len)
     {
         auto next = ctx->pop_data_queue();
 
@@ -749,7 +750,7 @@ DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_re
 
     if((int)data.size() > len)
     {
-        int extra = (int)data.size() - len;
+        uint32_t extra = (uint32_t)data.size() - (uint32_t)len;
         data = std::vector<char>(data.begin() + extra, data.end());
     }
 
