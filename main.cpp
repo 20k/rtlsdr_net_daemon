@@ -79,31 +79,23 @@ struct device
     }
 };
 
-struct expiring_buffer
-{
-    std::vector<uint8_t> data;
-};
-
 struct global_queue
 {
-    std::vector<expiring_buffer> buffers;
+    std::vector<std::vector<uint8_t>> buffers;
     std::mutex mut;
 
     void add_buffer(std::vector<uint8_t>&& data)
     {
         std::lock_guard lock(mut);
 
-        expiring_buffer exp;
-        exp.data = std::move(data);
-
-        buffers.push_back(std::move(exp));
+        buffers.emplace_back(std::move(data));
     }
 
-    std::vector<expiring_buffer> pop_buffers()
+    std::vector<std::vector<uint8_t>> pop_buffers()
     {
         std::lock_guard lock(mut);
 
-        auto ret = std::move(buffers);
+        std::vector<std::vector<uint8_t>> ret = std::move(buffers);
         buffers.clear();
         return ret;
     }
@@ -342,15 +334,15 @@ int main()
 
             if(to_write.size() > 0)
             {
-                for(expiring_buffer& buf : to_write)
+                for(std::vector<uint8_t>& buf : to_write)
                 {
                     int chunk_size = 1024*8;
 
-                    for(int i=0; i < buf.data.size(); i += chunk_size)
+                    for(int i=0; i < buf.size(); i += chunk_size)
                     {
-                        int fin = std::min(i + chunk_size, (int)buf.data.size());
+                        int fin = std::min(i + chunk_size, (int)buf.size());
 
-                        int num = sendto(sck.listen_sock, (const char*)(buf.data.data() + i), fin - i, 0, (sockaddr*)sck.broadcast_address->ai_addr, sck.broadcast_address->ai_addrlen);
+                        int num = sendto(sck.listen_sock, (const char*)(buf.data() + i), fin - i, 0, (sockaddr*)sck.broadcast_address->ai_addr, sck.broadcast_address->ai_addrlen);
 
                         if(num == -1)
                             return;

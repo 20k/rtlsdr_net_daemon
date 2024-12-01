@@ -65,19 +65,6 @@
 			<Add option="-lsfml-system-s" />
 			<Add option="-lwinmm" />
 		</Linker>
-		<Unit filename="Manifest2.res">
-			<Option link="0" />
-		</Unit>
-		<Unit filename="Resources.rc">
-			<Option compilerVar="WINDRES" />
-			<Option compile="0" />
-			<Option link="0" />
-		</Unit>
-		<Unit filename="hello.rc">
-			<Option compilerVar="WINDRES" />
-			<Option compile="0" />
-			<Option link="0" />
-		</Unit>
 		<Unit filename="main.cpp" />
 		<Unit filename="main.h" />
 		<Extensions />
