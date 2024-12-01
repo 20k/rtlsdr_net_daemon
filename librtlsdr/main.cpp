@@ -236,6 +236,9 @@ void data_write(char type, auto what)
     std::vector<char> data;
     data.push_back(type);
 
+    uint32_t index = 0;
+    add(data, index);
+
     add(data, what);
 
     get_query_sock()->write(data);
@@ -243,7 +246,12 @@ void data_write(char type, auto what)
 
 std::vector<char> query_read(char type)
 {
-    get_query_sock()->write(std::vector<char>{type});
+    std::vector<char> to_write{type};
+
+    uint32_t index = 0;
+    add(to_write, index);
+
+    get_query_sock()->write(to_write);
 
     return get_query_sock()->read();
 }
@@ -252,7 +260,9 @@ uint32_t DLL_EXPORT rtlsdr_get_device_count(void)
 {
     LOG("Device Count");
 
-    return query_read(0x10);
+    auto data = query_read(0x10);
+
+    return read_pop<int>(data).value();
 }
 
 const char* DLL_EXPORT rtlsdr_get_device_name(uint32_t index)

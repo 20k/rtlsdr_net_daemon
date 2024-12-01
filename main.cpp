@@ -364,13 +364,13 @@ struct data_format
 
         if(in.size() >= sizeof(char) + sizeof(uint32_t))
         {
-            index = {};
+            index = 0;
             memcpy(&index.value(), &in[1], sizeof(uint32_t));
         }
 
         if(in.size() >= sizeof(char) + sizeof(uint32_t)*2)
         {
-            param = {};
+            param = 0;
             memcpy(&param.value(), &in[5], sizeof(uint32_t));
         }
     }
