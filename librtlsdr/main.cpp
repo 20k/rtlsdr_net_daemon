@@ -13,14 +13,7 @@
 #include <SFML/System/Sleep.hpp>
 #include <ranges>
 #include <thread>
-
-#if 0
-// a sample exported function
-void DLL_EXPORT SomeFunction(const LPCSTR sometext)
-{
-    MessageBoxA(0, sometext, "DLL Message", MB_OK | MB_ICONINFORMATION);
-}
-#endif
+#include <math.h>
 
 FILE* get_file()
 {
@@ -185,13 +178,16 @@ struct sock
         return write(data);
     }
 
-    bool can_read()
+    bool can_read(double timeout_s = 0)
     {
         fd_set reads;
         FD_ZERO(&reads);
         FD_SET(s, &reads);
 
         struct timeval tv = {};
+
+        tv.tv_sec = timeout_s;
+        tv.tv_usec = (timeout_s - floor(timeout_s)) * 1000. * 1000.;
 
         select(s+1, &reads, nullptr, nullptr, &tv);
 
@@ -355,15 +351,28 @@ void data_write(rtlsdr_dev_t* rctx, char type, auto what)
     get_query_sock()->write(data);
 }
 
+///do a basic retry loop on a timeout, to guarantee success if the underlying
+std::vector<char> write_read_loop(const std::vector<char>& to_write)
+{
+    bool any_data = false;
+
+    while(!any_data)
+    {
+        get_query_sock()->write(to_write);
+
+        any_data = get_query_sock()->can_read(10);
+    }
+
+    return get_query_sock()->read();
+}
+
 std::vector<char> query_read_eidx(uint32_t index, char type)
 {
     std::vector<char> to_write{type};
 
     add(to_write, index);
 
-    get_query_sock()->write(to_write);
-
-    return get_query_sock()->read();
+    return write_read_loop(to_write);
 }
 
 std::vector<char> query_read(rtlsdr_dev_t* rctx, char type)
@@ -381,9 +390,7 @@ uint32_t DLL_EXPORT rtlsdr_get_device_count(void)
 
     std::vector<char> to_write{0x10};
 
-    get_query_sock()->write(to_write);
-
-    auto data = get_query_sock()->read();
+    auto data = write_read_loop(to_write);
 
     return read_pop<int>(data).value();
 }
