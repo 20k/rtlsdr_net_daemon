@@ -27,9 +27,9 @@ FILE* get_file()
     return file;
 }
 
-//#define LOG(x) fwrite(x, strlen(x), 1, get_file())
+#define LOG(x) fwrite(x"\n", strlen(x"\n"), 1, get_file())
 
-#define LOG(x)
+//#define LOG(x)
 #define FLOG(x)
 //#define FLOG(x) fwrite(x.c_str(), x.size(), 1, get_file())
 
@@ -165,6 +165,19 @@ struct sock
         memcpy(data.data(), &in, sizeof(in));
 
         return write(data);
+    }
+
+    bool can_read()
+    {
+        fd_set reads;
+        FD_ZERO(&reads);
+        FD_SET(s, &reads);
+
+        struct timeval tv = {};
+
+        select(s+1, &reads, nullptr, nullptr, &tv);
+
+        return FD_ISSET(s, &reads);
     }
 
     std::vector<char> read()
@@ -348,6 +361,8 @@ int DLL_EXPORT rtlsdr_get_index_by_serial(const char* serial)
     return 0;
 }
 
+std::atomic_int cnt{0};
+
 DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
 {
     LOG("Open");
@@ -363,12 +378,18 @@ DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
 
     out->sck = new sock("127.255.255.255", out->port, true);
 
+    assert(cnt == 0);
+
+    cnt++;
+
     dev[0] = (rtlsdr_dev_t*)out;
     return 0;
 }
 
 DLL_EXPORT int rtlsdr_close(rtlsdr_dev_t *dev)
 {
+    cnt--;
+
     LOG("Close");
 
     if(dev == nullptr)
@@ -686,9 +707,12 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
 
     while(!ctx->cancelled)
     {
-        auto data = ctx->sck->read();
+        while(ctx->sck->can_read())
+        {
+            auto data = ctx->sck->read();
 
-        next_data.insert(next_data.end(), data.begin(), data.end());
+            next_data.insert(next_data.end(), data.begin(), data.end());
+        }
 
         if((uint32_t)next_data.size() >= pop_size)
         {
