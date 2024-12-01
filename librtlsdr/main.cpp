@@ -770,9 +770,6 @@ DLL_EXPORT int rtlsdr_wait_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
     return rtlsdr_read_async(dev, cb, ctx, 0, 0);
 }
 
-//std::mutex mut;
-//bool has_ever_asked_for_data = false;
-
 DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *user_ctx, uint32_t buf_num, uint32_t buf_len)
 {
     LOG("reada");
