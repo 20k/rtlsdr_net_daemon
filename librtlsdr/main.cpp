@@ -142,6 +142,14 @@ struct sock
                     continue;
             }
 
+            #ifdef _WIN32
+            #define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR, 12)
+
+            bool report_errors = false;
+            DWORD bytes = 0;
+            WSAIoctl(s, SIO_UDP_CONNRESET, &report_errors, sizeof(report_errors), nullptr, 0, &bytes, nullptr, nullptr);
+            #endif
+
             break;
         }
 
