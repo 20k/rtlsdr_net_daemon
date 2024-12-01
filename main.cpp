@@ -39,9 +39,18 @@ struct device
         rtlsdr_reset_buffer(v);
     }
 
+    device(device&& other)
+    {
+        v = other.v;
+        gains_intl = other.gains_intl;
+
+        other.v = nullptr;
+    }
+
     ~device()
     {
-        assert(rtlsdr_close(v) == 0);
+        if(v)
+            assert(rtlsdr_close(v) == 0);
     }
 
     std::vector<int> get_gains()
@@ -312,16 +321,23 @@ void add(std::vector<char>& in, const std::vector<int> v)
 }
 
 ///todo: multiple devices
+///so: we send a query when we open a device, and that query should return the socket for the device
 int main()
 {
-    device dev;
+    std::vector<device> devs;
 
-    dev.set_freq(1000000);
+    devs.emplace_back();
 
-    std::jthread([&]()
+    for(auto& dev : devs)
+        dev.set_freq(1000000);
+
+    for(device& dev : devs)
     {
-        rtlsdr_read_async(dev.v, pipe_data_into_queue, nullptr, 0, 0);
-    }).detach();
+        std::jthread([&]()
+        {
+            rtlsdr_read_async(dev.v, pipe_data_into_queue, nullptr, 0, 0);
+        }).detach();
+    }
 
     sock sck("6960", true);
     sock info("6961", false);
@@ -431,6 +447,8 @@ int main()
         {
             if(data.size() < 1)
                 continue;
+
+            device& dev = devs.at(0);
 
             unsigned char cmd = data[0];
 
@@ -597,7 +615,9 @@ int main()
     }
 
     global_close = 1;
-    rtlsdr_cancel_async(dev.v);
+
+    for(device& dev : devs)
+        rtlsdr_cancel_async(dev.v);
 
     return 0;
 }
