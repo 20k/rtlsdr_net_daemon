@@ -84,23 +84,6 @@ std::vector<char> readall(SOCKET s, sock_view addr)
     return bufsize;
 }
 
-void startup()
-{
-    static int startup = 0;
-    static WSADATA wsa_data;
-
-    if(!startup)
-    {
-        if(auto result = WSAStartup(MAKEWORD(2,2), &wsa_data); result != 0)
-        {
-            printf("WSAStartup failed: %d\n", result);
-            throw std::runtime_error("WSA Failure");
-        }
-
-        startup = 1;
-    }
-}
-
 struct sock
 {
     SOCKET s = INVALID_SOCKET;
@@ -109,7 +92,13 @@ struct sock
 
     sock(const std::string& address, const std::string& port, bool _broadcast) : broadcast(_broadcast)
     {
-        startup();
+        WSADATA wsa_data;
+
+        if(auto result = WSAStartup(MAKEWORD(2,2), &wsa_data); result != 0)
+        {
+            printf("WSAStartup failed: %d\n", result);
+            throw std::runtime_error("WSA Failure");
+        }
 
         addrinfo hints = {};
         hints.ai_family = AF_INET;

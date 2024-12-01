@@ -155,6 +155,7 @@ struct sock
 
     sock(const std::string& port, bool broadcast)
     {
+        #ifdef _WIN32
         WSADATA wsa_data;
 
         if(auto result = WSAStartup(MAKEWORD(2,2), &wsa_data); result != 0)
@@ -162,6 +163,7 @@ struct sock
             printf("WSAStartup failed: %d\n", result);
             assert(false);
         }
+        #endif
 
         addrinfo hints = {};
         hints.ai_family = AF_INET;
