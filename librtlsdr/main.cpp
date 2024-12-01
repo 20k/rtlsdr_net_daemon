@@ -456,7 +456,27 @@ int DLL_EXPORT rtlsdr_get_index_by_serial(const char* serial)
 {
     LOG("Idx By Serial");
 
-    return 0;
+	if(serial == nullptr)
+		return -1;
+
+	uint32_t count = rtlsdr_get_device_count();
+
+	if(count == 0)
+		return -2;
+
+    std::string sserial(serial);
+
+	for(uint32_t i = 0; i < count; i++)
+    {
+        char s[257] = {};
+
+		rtlsdr_get_device_usb_strings(i, nullptr, nullptr, s);
+
+		if(sserial == std::string(s))
+			return i;
+	}
+
+	return -3;
 }
 
 DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
