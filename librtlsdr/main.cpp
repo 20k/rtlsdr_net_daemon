@@ -265,7 +265,6 @@ struct context
     std::jthread data_thread;
     uint32_t max_bytes = 1024 * 1024 * 10;
     std::atomic_bool has_data_queue{false};
-    std::atomic_bool kill_data{false};
 
     void start_data_queue()
     {
@@ -291,12 +290,6 @@ struct context
 
                         data_queue = std::vector<char>(data_queue.begin() + extra, data_queue.end());
                     }
-
-                    if(kill_data)
-                    {
-                        data_queue.clear();
-                        kill_data = false;
-                    }
                 }
 
                 sf::sleep(sf::milliseconds(1));
@@ -321,8 +314,6 @@ struct context
     {
         stop_data_queue();
         start_data_queue();
-
-        //kill_data = true;
     }
 
     std::vector<char> pop_data_queue()
