@@ -7,6 +7,7 @@
 #include <thread>
 #include <chrono>
 #include <SFML/System/Sleep.hpp>
+#include <set>
 
 std::atomic_int global_close{0};
 
@@ -471,61 +472,38 @@ int main()
             all_dat.push_back({fmt, storage});
         }
 
-        #if 0
-        auto count_type = [&](unsigned char type)
+        std::set<std::pair<uint32_t, uint32_t>> already_seen;
+
+        std::set<uint32_t> permitted_to_elide = {
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            0x05,
+            0x0d,
+            0x21
+        };
+
+        for(int i=(int)all_dat.size() - 1; i >= 0; i--)
         {
-            int counts = 0;
+            data_format& fmt = all_dat[i].first;
 
-            for(auto& [a, b] : all_dat)
+            if(!fmt.index)
+                continue;
+
+            if(permitted_to_elide.count(fmt.cmd) == 0)
+                continue;
+
+            std::pair<uint32_t, uint32_t> to_check = {fmt.cmd, fmt.index.value()};
+
+            if(already_seen.count(to_check) == 0)
             {
-                if(a.size() == 0)
-                    continue;
-
-                if(a[0] == type)
-                    counts++;
+                already_seen.insert(to_check);
+                continue;
             }
 
-            return counts;
-        };
-
-        auto remove_num_of = [&](unsigned char type, int num)
-        {
-            if(num <= 0)
-                return;
-
-            int counts = 0;
-
-            for(int i=0; i < (int)all_dat.size(); i++)
-            {
-                if(all_dat[i].first.size() == 0)
-                    continue;
-
-                if(all_dat[i].first[0] == type)
-                {
-                    all_dat.erase(all_dat.begin() + i);
-                    i--;
-                    counts++;
-
-                    if(counts == num)
-                        return;
-                }
-            }
-        };
-
-        auto remove_all_except_last = [&](unsigned char type)
-        {
-            auto cnt = count_type(type);
-            remove_num_of(type, cnt - 1);
-        };
-
-        remove_all_except_last(0x01);
-        remove_all_except_last(0x02);
-        remove_all_except_last(0x03);
-        remove_all_except_last(0x04);
-        remove_all_except_last(0x05);
-        remove_all_except_last(0x0d);
-        remove_all_except_last(0x21);
-        #endif
+            all_dat.erase(all_dat.begin() + i);
+        }
 
         if(all_dat.size() == 0)
             sf::sleep(sf::milliseconds(1));
