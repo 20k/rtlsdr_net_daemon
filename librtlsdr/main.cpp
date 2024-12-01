@@ -28,9 +28,9 @@ FILE* get_file()
     return file;
 }
 
-#define LOG(x) fwrite(x"\n", strlen(x"\n"), 1, get_file())
+//#define LOG(x) fwrite(x"\n", strlen(x"\n"), 1, get_file())
 
-//#define LOG(x)
+#define LOG(x)
 #define FLOG(x)
 //#define FLOG(x) fwrite(x.c_str(), x.size(), 1, get_file())
 
@@ -291,7 +291,7 @@ struct context
                     }
                 }
 
-                //sf::sleep(sf::milliseconds(1));
+                sf::sleep(sf::milliseconds(1));
             }
 
             {
@@ -786,37 +786,26 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
     std::vector<unsigned char> next_data;
     uint32_t pop_size = 65536/4;
 
-    //if(buf_len > 0)
-    //    pop_size = buf_len;
-
-    /*{
-        std::lock_guard guard(mut);
-
-        if(!has_ever_asked_for_data)
-        {
-            has_ever_asked_for_data = true;
-            get_query_sock()->write(std::vector<char>{0x0f});
-        }
-    }*/
+    if(buf_len > 0)
+        buf_len = pop_size;
 
     while(!ctx->cancelled)
     {
-        //while(ctx->sck->can_read())
-        {
-            auto data = ctx->pop_data_queue();
+        auto data = ctx->pop_data_queue();
 
-            next_data.insert(next_data.end(), data.begin(), data.end());
-        }
+        next_data.insert(next_data.end(), data.begin(), data.end());
 
         if((uint32_t)next_data.size() >= pop_size)
         {
-            cb((unsigned char*)next_data.data(), (uint32_t)next_data.size(), user_ctx);
+            std::span<unsigned char> corrected(next_data.begin(), pop_size);
 
-            next_data.clear();
+            cb((unsigned char*)corrected.data(), (uint32_t)corrected.size(), user_ctx);
+
+            next_data = std::vector<unsigned char>(next_data.begin() + pop_size, next_data.end());
         }
         else
         {
-            //sf::sleep(sf::milliseconds(1));
+            sf::sleep(sf::milliseconds(1));
         }
     }
 
