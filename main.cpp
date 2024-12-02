@@ -90,21 +90,6 @@ struct device
 
         return;
     }
-
-    void set_bandwidth(uint32_t width)
-    {
-        rtlsdr_set_tuner_bandwidth(v, width);
-    }
-
-    void set_freq(uint32_t hz)
-    {
-        rtlsdr_set_center_freq(v, hz);
-    }
-
-    uint32_t get_freq()
-    {
-        return rtlsdr_get_center_freq(v);
-    }
 };
 
 struct sock_view
@@ -401,13 +386,13 @@ struct device_ser
         if(js.count("bandwidth"))
         {
             bandwidth = js["bandwidth"];
-            dev.set_bandwidth(bandwidth.value());
+            rtlsdr_set_tuner_bandwidth(dev.v, bandwidth.value());
         }
 
         if(js.count("frequency"))
         {
             frequency = js["frequency"];
-            dev.set_freq(frequency.value());
+            rtlsdr_set_center_freq(dev.v, frequency.value());
         }
 
         if(js.count("gain"))
@@ -462,7 +447,7 @@ int main()
     }
 
     for(auto& dev : devs)
-        dev.set_freq(1000000);
+        rtlsdr_set_center_freq(dev.v, 1000000);
 
     std::map<int, device_ser> serialised;
 
