@@ -165,9 +165,9 @@ struct sock
 
         if(listen_sock == INVALID_SOCKET)
         {
-            printf("Error at socket(): %d\n", WSAGetLastError());
             freeaddrinfo(addr);
             #ifdef _WIN32
+            printf("Error at socket(): %d\n", WSAGetLastError());
             WSACleanup();
             #endif
             assert(false);
@@ -182,9 +182,9 @@ struct sock
 
         if(auto result = bind(listen_sock, addr->ai_addr, (int)addr->ai_addrlen); result == SOCKET_ERROR)
         {
-            printf("bind failed with error: %d\n", WSAGetLastError());
             freeaddrinfo(addr);
             #ifdef _WIN32
+            printf("bind failed with error: %d\n", WSAGetLastError());
             closesocket(listen_sock);
             WSACleanup();
             #else
@@ -227,7 +227,11 @@ struct sock
 
         if(numbytes = recvfrom(listen_sock, data.data(), data.size(), 0, (sockaddr*)&from, &sock_size); numbytes == -1)
         {
+            #ifdef _WIN32
             printf("Error receiving from anyone %d\n", WSAGetLastError());
+            #else
+            printf("Error receiving from anyone\n");
+            #endif
             return {};
         }
 
@@ -251,7 +255,7 @@ struct sock
 
     void send_all(sock_view sv, const std::string& in)
     {
-       sendall(listen_sock, sv, in);
+        sendall(listen_sock, sv, in);
     }
 
     void broadcast(const auto& what)
