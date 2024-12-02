@@ -633,30 +633,22 @@ int main()
 
             if(cmd == 0x15)
             {
-                int gain = rtlsdr_get_tuner_gain(dev.v);
-
-                info.send_all(from, gain);
+                info.send_all(from, rtlsdr_get_tuner_gain(dev.v));
             }
 
             if(cmd == 0x16)
             {
-                uint32_t rate = rtlsdr_get_sample_rate(dev.v);
-
-                info.send_all(from, rate);
+                info.send_all(from, rtlsdr_get_sample_rate(dev.v));
             }
 
             if(cmd == 0x17)
             {
-                uint32_t sam = rtlsdr_get_direct_sampling(dev.v);
-
-                info.send_all(from, sam);
+                info.send_all(from, rtlsdr_get_direct_sampling(dev.v));
             }
 
             if(cmd == 0x18)
             {
-                uint32_t t = rtlsdr_get_offset_tuning(dev.v);
-
-                info.send_all(from, t);
+                info.send_all(from, rtlsdr_get_offset_tuning(dev.v));
             }
 
             if(cmd == 0x19)
@@ -674,9 +666,7 @@ int main()
 
             if(cmd == 0x20)
             {
-                uint32_t freq = rtlsdr_get_center_freq(dev.v);
-
-                info.send_all(from, freq);
+                info.send_all(from, rtlsdr_get_center_freq(dev.v));
             }
 
             if(cmd == 0x24)
@@ -704,12 +694,7 @@ int main()
             ///query port
             if(cmd == 0x27)
             {
-                uint32_t port = device_to_port(device_index);
-
-                if(device_index >= devs.size())
-                    port = 0;
-
-                info.send_all(from, port);
+                info.send_all(from, device_to_port(device_index));
             }
 
             /*if(cmd == 0x0f)
