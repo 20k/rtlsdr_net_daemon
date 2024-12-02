@@ -11,8 +11,6 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 
-std::atomic_int global_close{0};
-
 struct device
 {
     rtlsdr_dev_t* v = nullptr;
@@ -508,9 +506,6 @@ int main()
     {
         while(!tok.stop_requested())
         {
-            if(global_close)
-                break;
-
             bool all_zero = true;
 
             for(async_context* actx : contexts)
