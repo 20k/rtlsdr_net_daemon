@@ -683,6 +683,7 @@ DLL_EXPORT int rtlsdr_set_testmode(rtlsdr_dev_t *dev, int on)
 {
     LOG("settest");
 
+    data_write(dev, 0x29, on);
     return 0;
 }
 
@@ -840,5 +841,6 @@ DLL_EXPORT int rtlsdr_set_bias_tee_gpio(rtlsdr_dev_t *dev, int gpio, int on)
 {
     LOG("settee2");
 
+    data_write(dev, 0x28, std::vector<int>{gpio, on});
     return 0;
 }

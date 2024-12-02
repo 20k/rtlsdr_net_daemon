@@ -338,7 +338,9 @@ struct data_format
     uint8_t cmd = 0;
     std::optional<uint32_t> index = 0;
     std::optional<uint32_t> param = 0;
+    std::optional<uint32_t> param2 = 0;
 
+    ///this could be done better or more generically but its super not worth the investment
     void load(const std::vector<char>& in)
     {
         if(in.size() == 0)
@@ -357,6 +359,12 @@ struct data_format
         {
             param = 0;
             memcpy(&param.value(), &in[5], sizeof(uint32_t));
+        }
+
+        if(in.size() >= sizeof(char) + sizeof(uint32_t)*3)
+        {
+            param2 = 0;
+            memcpy(&param2.value(), &in[9], sizeof(uint32_t));
         }
     }
 };
@@ -744,6 +752,12 @@ int main()
                 serialised[device_index].bandwidth = param;
                 save();
             }
+
+            if(cmd == 0x28 && fmt.param2)
+                rtlsdr_set_bias_tee_gpio(dev.v, *fmt.param, *fmt.param2);
+
+            if(cmd == 0x29)
+                rtlsdr_set_testmode(dev.v, *fmt.param);
         }
     }
 
