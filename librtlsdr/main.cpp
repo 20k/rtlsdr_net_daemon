@@ -76,6 +76,7 @@ struct sock
 
     sock(const std::string& address, const std::string& port, bool _broadcast) : broadcast(_broadcast)
     {
+        #ifdef _WIN32
         WSADATA wsa_data;
 
         if(auto result = WSAStartup(MAKEWORD(2,2), &wsa_data); result != 0)
@@ -83,6 +84,7 @@ struct sock
             printf("WSAStartup failed: %d\n", result);
             throw std::runtime_error("WSA Failure");
         }
+        #endif
 
         addrinfo hints = {};
         hints.ai_family = AF_INET;
@@ -97,8 +99,10 @@ struct sock
 
         if(int result = getaddrinfo(node, port.c_str(), &hints, &addr); result != 0)
         {
+            #ifdef _WIN32
             printf("Error at socket(): %d\n", WSAGetLastError());
             WSACleanup();
+            #endif
             throw std::runtime_error("Sock Error");
         }
 
