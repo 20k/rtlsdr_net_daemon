@@ -29,9 +29,9 @@ struct device
 
         ngain = rtlsdr_get_tuner_gains(v, gains_intl.data());
 
-        assert(ngain == gains_intl.size());
+        assert(ngain == (int)gains_intl.size());
 
-        for(int i=0; i < gains_intl.size(); i++)
+        for(int i=0; i < (int)gains_intl.size(); i++)
         {
             printf("%i ", gains_intl[i]);
         }
@@ -424,7 +424,7 @@ int main()
 
     std::vector<async_context*> contexts;
 
-    for(int i=0; i < dcount; i++)
+    for(int i=0; i < (int)dcount; i++)
     {
         uint64_t root = device_to_port(i);
 
@@ -483,7 +483,7 @@ int main()
 
     load();
 
-    for(int i=0; i < dcount; i++)
+    for(int i=0; i < (int)dcount; i++)
     {
         device& dev = devs[i];
         async_context* actx = contexts[i];
@@ -513,11 +513,11 @@ int main()
 
                 for(std::vector<uint8_t>& buf : to_write)
                 {
-                    int chunk_size = 1024*8;
+                    uint32_t chunk_size = 1024*8;
 
-                    for(int i=0; i < buf.size(); i += chunk_size)
+                    for(uint32_t i=0; i < buf.size(); i += chunk_size)
                     {
-                        int fin = std::min(i + chunk_size, (int)buf.size());
+                        uint32_t fin = std::min(i + chunk_size, (uint32_t)buf.size());
 
                         std::span<const char> chunk((char*)buf.data() + i, fin - i);
 
