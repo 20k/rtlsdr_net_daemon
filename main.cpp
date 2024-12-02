@@ -588,9 +588,7 @@ int main()
             printf("Qcmd %i\n", cmd);
 
             if(cmd == 0x10)
-            {
                 info.send_all(from, rtlsdr_get_device_count());
-            }
 
             if(cmd == 0x11)
             {
@@ -610,14 +608,10 @@ int main()
             device& dev = devs.at(device_index);
 
             if(cmd == 0x12)
-            {
                 info.send_all(from, rtlsdr_get_freq_correction(dev.v));
-            }
 
             if(cmd == 0x13)
-            {
                 info.send_all(from, rtlsdr_get_tuner_type(dev.v));
-            }
 
             if(cmd == 0x14)
             {
@@ -631,24 +625,16 @@ int main()
             }
 
             if(cmd == 0x15)
-            {
                 info.send_all(from, rtlsdr_get_tuner_gain(dev.v));
-            }
 
             if(cmd == 0x16)
-            {
                 info.send_all(from, rtlsdr_get_sample_rate(dev.v));
-            }
 
             if(cmd == 0x17)
-            {
                 info.send_all(from, rtlsdr_get_direct_sampling(dev.v));
-            }
 
             if(cmd == 0x18)
-            {
                 info.send_all(from, rtlsdr_get_offset_tuning(dev.v));
-            }
 
             if(cmd == 0x19)
             {
@@ -664,9 +650,7 @@ int main()
             }
 
             if(cmd == 0x20)
-            {
                 info.send_all(from, rtlsdr_get_center_freq(dev.v));
-            }
 
             if(cmd == 0x24)
             {
@@ -692,9 +676,7 @@ int main()
 
             ///query port
             if(cmd == 0x27)
-            {
                 info.send_all(from, device_to_port(device_index));
-            }
 
             /*if(cmd == 0x0f)
             {
