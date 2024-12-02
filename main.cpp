@@ -10,6 +10,7 @@
 #include <set>
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <span>
 
 struct device
 {
