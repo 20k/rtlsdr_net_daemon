@@ -1,7 +1,5 @@
-#define BUILD_DLL
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include "main.h"
 #include <stdio.h>
 #include <rtl-sdr.h>
 #include <stdexcept>
@@ -14,6 +12,8 @@
 #include <ranges>
 #include <thread>
 #include <math.h>
+
+#define DLL_EXPORT __declspec(dllexport)
 
 FILE* get_file()
 {
