@@ -805,7 +805,7 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
         {
             std::span<unsigned char> corrected(next_data.begin(), pop_size);
 
-            cb((unsigned char*)corrected.data(), (uint32_t)corrected.size(), user_ctx);
+            cb(corrected.data(), (uint32_t)corrected.size(), user_ctx);
 
             next_data = std::vector<unsigned char>(next_data.begin() + pop_size, next_data.end());
         }
