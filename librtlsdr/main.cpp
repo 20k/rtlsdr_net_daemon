@@ -304,11 +304,9 @@ struct context
 
     std::vector<char> pop_data_queue()
     {
-        std::vector<char> ret;
-
         std::lock_guard guard(mut);
 
-        ret = std::move(data_queue);
+        std::vector<char> ret = std::move(data_queue);
         data_queue.clear();
 
         return ret;

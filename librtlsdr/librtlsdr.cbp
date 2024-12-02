@@ -26,6 +26,7 @@
 				<Option createStaticLib="1" />
 				<Compiler>
 					<Add option="-O3" />
+					<Add option="-s" />
 				</Compiler>
 				<Linker>
 					<Add option="-O3" />
@@ -42,6 +43,7 @@
 				<Option createStaticLib="1" />
 				<Compiler>
 					<Add option="-O3" />
+					<Add option="-s" />
 				</Compiler>
 				<Linker>
 					<Add option="-O3" />
@@ -53,7 +55,6 @@
 		<Compiler>
 			<Add option="-Wall" />
 			<Add option="-std=c++23" />
-			<Add option="-s" />
 			<Add option="-DSFML_STATIC" />
 			<Add directory="../deps/rtl-sdr/include" />
 		</Compiler>
