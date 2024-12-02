@@ -108,7 +108,7 @@ void sendall(SOCKET s, sock_view sv, const std::span<const char>& data)
 {
     int count = sendto(s, data.data(), data.size(), 0, sv.addr, sv.len);
 
-    assert(count != 1);
+    assert(count != -1);
 
     assert(count == data.size());
 }

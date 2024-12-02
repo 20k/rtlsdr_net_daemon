@@ -45,21 +45,13 @@ struct sock_view
     }
 };
 
-bool sendall(SOCKET s, addrinfo* ptr, const std::vector<char>& data)
+void sendall(SOCKET s, sock_view sv, const std::span<const char>& data)
 {
-    int64_t bytes_sent = 0;
+    int count = sendto(s, data.data(), data.size(), 0, sv.addr, sv.len);
 
-    while(bytes_sent < (int64_t)data.size())
-    {
-        int count = sendto(s, data.data() + bytes_sent, data.size() - bytes_sent, 0, ptr->ai_addr, ptr->ai_addrlen);
+    assert(count != -1);
 
-        if(count == -1)
-            return true;
-
-        bytes_sent += count;
-    }
-
-    return false;
+    assert(count == (int)data.size());
 }
 
 std::vector<char> readall(SOCKET s, sock_view addr)
@@ -165,7 +157,7 @@ struct sock
     {
         assert(!broadcast);
 
-        assert(!sendall(s, found_addr, data));
+        sendall(s, found_addr, data);
     }
 
     void write(unsigned int in)
