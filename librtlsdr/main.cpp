@@ -1,7 +1,6 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <stdio.h>
-#include <rtl-sdr.h>
 #include <stdexcept>
 #include <assert.h>
 #include <string>
@@ -12,7 +11,9 @@
 #include <thread>
 #include <math.h>
 
-#define DLL_EXPORT __declspec(dllexport)
+#define DLL_EXPORT extern "C" __declspec(dllexport)
+
+typedef struct rtlsdr_dev rtlsdr_dev_t;
 
 FILE* get_file()
 {
@@ -371,7 +372,7 @@ std::vector<char> query_read(rtlsdr_dev_t* rctx, char type)
     return query_read_eidx(ctx->index, type);
 }
 
-uint32_t DLL_EXPORT rtlsdr_get_device_count(void)
+DLL_EXPORT uint32_t rtlsdr_get_device_count(void)
 {
     LOG("Device Count");
 
@@ -382,7 +383,7 @@ uint32_t DLL_EXPORT rtlsdr_get_device_count(void)
     return read_pop<int>(data).value();
 }
 
-const char* DLL_EXPORT rtlsdr_get_device_name(uint32_t index)
+DLL_EXPORT const char* rtlsdr_get_device_name(uint32_t index)
 {
     LOG("Device name");
 
@@ -393,7 +394,7 @@ const char* DLL_EXPORT rtlsdr_get_device_name(uint32_t index)
     return leaked->c_str();
 }
 
-int DLL_EXPORT rtlsdr_get_device_usb_strings(uint32_t index,
+DLL_EXPORT int rtlsdr_get_device_usb_strings(uint32_t index,
 					     char* m,
 					     char* p,
 					     char* s)
@@ -436,7 +437,7 @@ int DLL_EXPORT rtlsdr_get_device_usb_strings(uint32_t index,
     return 0;
 }
 
-int DLL_EXPORT rtlsdr_get_index_by_serial(const char* serial)
+DLL_EXPORT int rtlsdr_get_index_by_serial(const char* serial)
 {
     LOG("Idx By Serial");
 
@@ -589,14 +590,24 @@ DLL_EXPORT int rtlsdr_get_freq_correction(rtlsdr_dev_t *dev)
     return read_pop<int>(result).value();
 }
 
+enum rtlsdr_tuner {
+    T0 = 0,
+    T1 = 1,
+    T2 = 2,
+    T3 = 3,
+    T4 = 4,
+    T5 = 5,
+    T6 = 6,
+};
+
 ///todo: dome
-DLL_EXPORT enum rtlsdr_tuner rtlsdr_get_tuner_type(rtlsdr_dev_t *dev)
+DLL_EXPORT rtlsdr_tuner rtlsdr_get_tuner_type(rtlsdr_dev_t *dev)
 {
     LOG("gettt");
 
     auto result = query_read(dev, 0x13);
 
-    return (enum rtlsdr_tuner)read_pop<int>(result).value();
+    return (rtlsdr_tuner)read_pop<int>(result).value();
 }
 
 DLL_EXPORT int rtlsdr_get_tuner_gains(rtlsdr_dev_t *dev, int *gains)
@@ -769,12 +780,7 @@ DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_re
     return 0;
 }
 
-DLL_EXPORT int rtlsdr_wait_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx)
-{
-    LOG("waita");
-
-    return rtlsdr_read_async(dev, cb, ctx, 0, 0);
-}
+using rtlsdr_read_async_cb_t = void(*)(unsigned char*, uint32_t, void*);
 
 DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *user_ctx, uint32_t buf_num, uint32_t buf_len)
 {
@@ -814,6 +820,13 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
     }
 
     return 0;
+}
+
+DLL_EXPORT int rtlsdr_wait_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx)
+{
+    LOG("waita");
+
+    return rtlsdr_read_async(dev, cb, ctx, 0, 0);
 }
 
 DLL_EXPORT int rtlsdr_cancel_async(rtlsdr_dev_t *dev)
