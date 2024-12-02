@@ -8,6 +8,8 @@
 #include <chrono>
 #include <SFML/System/Sleep.hpp>
 #include <set>
+#include <nlohmann/json.hpp>
+#include <fstream>
 
 std::atomic_int global_close{0};
 
@@ -381,7 +383,6 @@ struct data_format
 ///so: we send a query when we open a device, and that query should return the socket for the device
 int main()
 {
-
     std::vector<device> devs;
 
     uint32_t dcount = device_count();
@@ -409,6 +410,69 @@ int main()
 
     for(auto& dev : devs)
         dev.set_freq(1000000);
+
+    std::map<int, uint64_t> last_freqs;
+    std::map<int, uint64_t> last_bandwidths;
+    std::map<int, int> last_gains;
+
+    auto save = [&]()
+    {
+        nlohmann::json out;
+        out["freqs"] = last_freqs;
+        out["bandwidths"] = last_bandwidths;
+        out["gains"] = last_gains;
+
+        std::string as_str = out.dump();
+
+        FILE* file = fopen("save.json", "w");
+
+        fprintf(file, "%s", as_str.c_str());
+        fclose(file);
+    };
+
+    ///todo, use a struct or sommit
+    auto load = [&]()
+    {
+        std::ifstream t("save.json");
+
+        if(!t.good())
+            return;
+
+        std::string str((std::istreambuf_iterator<char>(t)),
+                         std::istreambuf_iterator<char>());
+
+        if(str == "")
+            return;
+
+        nlohmann::json dat = nlohmann::json::parse(str);
+
+        if(dat.count("freqs"))
+            last_freqs = dat["freqs"];
+        if(dat.count("bandwidths"))
+            last_bandwidths = dat["bandwidths"];
+        if(dat.count("gains"))
+            last_gains = dat["gains"];
+
+        for(auto& [index, val] : last_freqs)
+        {
+            if(index >= 0 && index < (int)devs.size())
+                devs[index].set_freq(val);
+        }
+
+        for(auto& [index, val] : last_bandwidths)
+        {
+            if(index >= 0 && index < (int)devs.size())
+                devs[index].set_bandwidth(val);
+        }
+
+        for(auto& [index, val] : last_gains)
+        {
+            if(index >= 0 && index < (int)devs.size())
+                devs[index].set_gain(val);
+        }
+    };
+
+    load();
 
     for(int i=0; i < dcount; i++)
     {
@@ -665,13 +729,21 @@ int main()
             printf("Got wcmd %i\n", cmd);
 
             if(cmd == 0x01)
+            {
                 rtlsdr_set_center_freq(dev.v, param);
+                last_freqs[device_index] = param;
+                save();
+            }
             if(cmd == 0x02)
                 rtlsdr_set_sample_rate(dev.v, param);
             if(cmd == 0x03)
                 rtlsdr_set_tuner_gain_mode(dev.v, param);
             if(cmd == 0x04)
+            {
                 rtlsdr_set_tuner_gain(dev.v, param);
+                last_gains[device_index] = param;
+                save();
+            }
             if(cmd == 0x05)
                 rtlsdr_set_freq_correction(dev.v, param);
             if(cmd == 0x06)
@@ -688,12 +760,16 @@ int main()
                 rtlsdr_set_xtal_freq(dev.v, param, 0);
             if(cmd == 0x0c)
                 rtlsdr_set_xtal_freq(dev.v, 0, param);
-            if(cmd == 0x0d)
-                dev.set_gain(param);
+            //if(cmd == 0x0d)
+            //    dev.set_gain(param);
             if(cmd == 0x0e)
                 rtlsdr_set_bias_tee(dev.v, param);
             if(cmd == 0x21)
+            {
                 rtlsdr_set_tuner_bandwidth(dev.v, param);
+                last_bandwidths[device_index] = param;
+                save();
+            }
         }
     }
 
