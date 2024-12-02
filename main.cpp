@@ -13,11 +13,6 @@
 
 std::atomic_int global_close{0};
 
-uint32_t device_count()
-{
-    return rtlsdr_get_device_count();
-}
-
 struct device
 {
     rtlsdr_dev_t* v = nullptr;
@@ -423,7 +418,7 @@ int main()
 {
     std::vector<device> devs;
 
-    uint32_t dcount = device_count();
+    uint32_t dcount = rtlsdr_get_device_count();
 
     for(uint32_t i = 0; i < dcount; i++)
         devs.emplace_back(i);
@@ -509,9 +504,9 @@ int main()
 
     sock info("6961", false);
 
-    std::jthread([&]()
+    std::jthread send_thread([&](std::stop_token tok)
     {
-        while(1)
+        while(!tok.stop_requested())
         {
             if(global_close)
                 break;
@@ -548,7 +543,7 @@ int main()
             if(all_zero)
                 sf::sleep(sf::milliseconds(1));
         }
-    }).detach();
+    });
 
     while(1)
     {
@@ -799,10 +794,11 @@ int main()
         }
     }
 
-    global_close = 1;
-
     for(device& dev : devs)
         rtlsdr_cancel_async(dev.v);
+
+    send_thread.request_stop();
+    send_thread.join();
 
     return 0;
 }
