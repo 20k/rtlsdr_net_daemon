@@ -103,21 +103,13 @@ struct sock_view
     }
 };
 
-bool sendall(SOCKET s, sock_view sv, const std::vector<char>& data)
+void sendall(SOCKET s, sock_view sv, const std::span<const char>& data)
 {
-    int64_t bytes_sent = 0;
+    int count = sendto(s, data.data(), data.size(), 0, sv.addr, sv.len);
 
-    while(bytes_sent < data.size())
-    {
-        int count = sendto(s, data.data() + bytes_sent, data.size() - bytes_sent, 0, sv.addr, sv.len);
+    assert(count != 1);
 
-        if(count == -1)
-            return true;
-
-        bytes_sent += count;
-    }
-
-    return false;
+    assert(count == data.size());
 }
 
 struct sock
@@ -258,9 +250,7 @@ struct sock
 
     void send_all(sock_view sv, const std::string& in)
     {
-        std::vector<char> data(in.begin(), in.end());
-
-        return send_all(sv, data);
+       sendall(listen_sock, sv, in);
     }
 
     void broadcast(const auto& what)
@@ -525,12 +515,9 @@ int main()
                     {
                         int fin = std::min(i + chunk_size, (int)buf.size());
 
-                        int num = sendto(actx->s.listen_sock, (const char*)(buf.data() + i), fin - i, 0, (sockaddr*)actx->s.broadcast_address->ai_addr, actx->s.broadcast_address->ai_addrlen);
+                        std::span<const char> chunk((char*)buf.data() + i, fin - i);
 
-                        if(num == -1)
-                            return;
-
-                        assert(num == (fin - i));
+                        sendall(actx->s.listen_sock, actx->s.broadcast_address, chunk);
                     }
                 }
             }
