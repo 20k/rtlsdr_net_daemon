@@ -379,6 +379,51 @@ struct data_format
     }
 };
 
+struct device_ser
+{
+    std::optional<uint32_t> bandwidth;
+    std::optional<uint64_t> frequency;
+    std::optional<int> gain;
+    std::optional<uint32_t> sample_rate;
+
+    void load(device& dev, nlohmann::json js)
+    {
+        if(js.count("bandwidth"))
+        {
+            bandwidth = js["bandwidth"];
+            dev.set_bandwidth(bandwidth.value());
+        }
+
+        if(js.count("frequency"))
+        {
+            frequency = js["frequency"];
+            dev.set_freq(frequency.value());
+        }
+
+        if(js.count("gain"))
+        {
+            gain = js["gain"];
+            dev.set_gain(gain.value());
+        }
+
+        if(js.count("sample_rate"))
+        {
+            sample_rate = js["sample_rate"];
+            rtlsdr_set_sample_rate(dev.v, sample_rate.value());
+        }
+    }
+
+    void save(nlohmann::json& js)
+    {
+        #define SAVE(x) if(x){js[#x] = *x;}
+
+        SAVE(bandwidth);
+        SAVE(frequency);
+        SAVE(gain);
+        SAVE(sample_rate);
+    }
+};
+
 ///todo: multiple devices
 ///so: we send a query when we open a device, and that query should return the socket for the device
 int main()
@@ -411,16 +456,16 @@ int main()
     for(auto& dev : devs)
         dev.set_freq(1000000);
 
-    std::map<int, uint64_t> last_freqs;
-    std::map<int, uint64_t> last_bandwidths;
-    std::map<int, int> last_gains;
+    std::map<int, device_ser> serialised;
 
     auto save = [&]()
     {
-        nlohmann::json out;
-        out["freqs"] = last_freqs;
-        out["bandwidths"] = last_bandwidths;
-        out["gains"] = last_gains;
+        nlohmann::json out = nlohmann::json::array_t();
+
+        for(int i=0; i < (int)devs.size(); i++)
+        {
+            serialised[i].save(out[i]);
+        }
 
         std::string as_str = out.dump();
 
@@ -446,29 +491,14 @@ int main()
 
         nlohmann::json dat = nlohmann::json::parse(str);
 
-        if(dat.count("freqs"))
-            last_freqs = dat["freqs"];
-        if(dat.count("bandwidths"))
-            last_bandwidths = dat["bandwidths"];
-        if(dat.count("gains"))
-            last_gains = dat["gains"];
+        if(!dat.is_array())
+            return;
 
-        for(auto& [index, val] : last_freqs)
-        {
-            if(index >= 0 && index < (int)devs.size())
-                devs[index].set_freq(val);
-        }
+        std::vector<nlohmann::json> as_array = dat;
 
-        for(auto& [index, val] : last_bandwidths)
+        for(int lidx = 0; lidx < (int)as_array.size() && lidx < (int)devs.size(); lidx++)
         {
-            if(index >= 0 && index < (int)devs.size())
-                devs[index].set_bandwidth(val);
-        }
-
-        for(auto& [index, val] : last_gains)
-        {
-            if(index >= 0 && index < (int)devs.size())
-                devs[index].set_gain(val);
+            serialised[lidx].load(devs[lidx], as_array[lidx]);
         }
     };
 
@@ -731,17 +761,21 @@ int main()
             if(cmd == 0x01)
             {
                 rtlsdr_set_center_freq(dev.v, param);
-                last_freqs[device_index] = param;
+                serialised[device_index].frequency = param;
                 save();
             }
             if(cmd == 0x02)
+            {
                 rtlsdr_set_sample_rate(dev.v, param);
+                serialised[device_index].sample_rate = param;
+                save();
+            }
             if(cmd == 0x03)
                 rtlsdr_set_tuner_gain_mode(dev.v, param);
             if(cmd == 0x04)
             {
                 rtlsdr_set_tuner_gain(dev.v, param);
-                last_gains[device_index] = param;
+                serialised[device_index].gain = param;
                 save();
             }
             if(cmd == 0x05)
@@ -767,7 +801,7 @@ int main()
             if(cmd == 0x21)
             {
                 rtlsdr_set_tuner_bandwidth(dev.v, param);
-                last_bandwidths[device_index] = param;
+                serialised[device_index].bandwidth = param;
                 save();
             }
         }
