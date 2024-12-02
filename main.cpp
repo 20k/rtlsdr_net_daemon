@@ -170,7 +170,9 @@ struct sock
         if(auto result = getaddrinfo(nullptr, port.c_str(), &hints, &addr); result != 0)
         {
             printf("getaddrinfo failed: %d\n", result);
+            #ifdef _WIN32
             WSACleanup();
+            #endif
             assert(false);
         }
 
@@ -182,7 +184,9 @@ struct sock
         if(auto result = getaddrinfo("127.255.255.255", port.c_str(), &bc_hints, &broadcast_address))
         {
             printf("getaddrinfo2 failed: %d\n", result);
+            #ifdef _WIN32
             WSACleanup();
+            #endif
             assert(false);
         }
 
@@ -192,7 +196,9 @@ struct sock
         {
             printf("Error at socket(): %d\n", WSAGetLastError());
             freeaddrinfo(addr);
+            #ifdef _WIN32
             WSACleanup();
+            #endif
             assert(false);
         }
 
@@ -207,8 +213,12 @@ struct sock
         {
             printf("bind failed with error: %d\n", WSAGetLastError());
             freeaddrinfo(addr);
+            #ifdef _WIN32
             closesocket(listen_sock);
             WSACleanup();
+            #else
+            close(listen_sock);
+            #endif
             assert(false);
         }
 
