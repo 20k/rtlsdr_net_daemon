@@ -544,7 +544,7 @@ DLL_EXPORT int rtlsdr_write_eeprom(rtlsdr_dev_t *dev, uint8_t* data, uint8_t off
 {
     LOG("w/e");
 
-    return 0;
+    return -3;
 }
 
 DLL_EXPORT int rtlsdr_read_eeprom(rtlsdr_dev_t *dev, uint8_t *data, uint8_t offset, uint16_t len)
@@ -768,8 +768,6 @@ DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_re
     memcpy(buf, data.data(), len);
     return 0;
 }
-
-std::atomic_int cancelled{0};
 
 DLL_EXPORT int rtlsdr_wait_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx)
 {
