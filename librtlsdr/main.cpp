@@ -9,7 +9,6 @@
 #include <optional>
 #include <atomic>
 #include <SFML/System/Sleep.hpp>
-#include <ranges>
 #include <thread>
 #include <math.h>
 
