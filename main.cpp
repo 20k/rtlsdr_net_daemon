@@ -434,8 +434,6 @@ struct device_ser
     }
 };
 
-///todo: multiple devices
-///so: we send a query when we open a device, and that query should return the socket for the device
 int main()
 {
     std::vector<device> devs;
@@ -485,7 +483,6 @@ int main()
         fclose(file);
     };
 
-    ///todo, use a struct or sommit
     auto load = [&]()
     {
         std::ifstream t("save.json");
