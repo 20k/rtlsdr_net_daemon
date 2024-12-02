@@ -738,7 +738,7 @@ DLL_EXPORT int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_re
 {
     LOG("reads");
 
-    if(len < 0)
+    if(len <= 0)
         return 0;
 
     assert(dev);
