@@ -426,6 +426,17 @@ struct device_ser
     }
 };
 
+std::string read_file(const std::string& name)
+{
+    std::ifstream t(name);
+
+    if(!t.good())
+        return "";
+
+    return std::string((std::istreambuf_iterator<char>(t)),
+                        std::istreambuf_iterator<char>());
+}
+
 int main()
 {
     std::vector<device> devs;
@@ -437,9 +448,29 @@ int main()
 
     std::cout << "Found devices " << dcount << std::endl;
 
-    auto device_to_port = [](uint32_t index) -> uint32_t
+    uint16_t port = 6962;
+
+    try
     {
-        return 6962 + index;
+        std::string config = read_file("config.json");
+
+        if(config != "")
+        {
+            nlohmann::json js = nlohmann::json::parse(config);
+
+            port = js["port"];
+
+            std::cout << "Loaded custom port " << port << std::endl;
+        }
+    }
+    catch(std::exception& e)
+    {
+        std::cout << "Exception " << e.what() << std::endl;
+    }
+
+    auto device_to_port = [&](uint32_t index) -> uint32_t
+    {
+        return port + index;
     };
 
     std::vector<async_context*> contexts;
@@ -477,13 +508,7 @@ int main()
 
     auto load = [&]()
     {
-        std::ifstream t("save.json");
-
-        if(!t.good())
-            return;
-
-        std::string str((std::istreambuf_iterator<char>(t)),
-                         std::istreambuf_iterator<char>());
+        std::string str = read_file("save.json");
 
         if(str == "")
             return;
