@@ -41,25 +41,8 @@
 			<Add option="-lws2_32" />
 			<Add option="-lusb-1.0" />
 			<Add option="-lwinmm" />
+			<Add library="deps/rtl-sdr/build/src/librtlsdr.dll.a" />
 		</Linker>
-		<Unit filename="deps/rtl-sdr/src/librtlsdr.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="deps/rtl-sdr/src/tuner_e4k.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="deps/rtl-sdr/src/tuner_fc0012.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="deps/rtl-sdr/src/tuner_fc0013.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="deps/rtl-sdr/src/tuner_fc2580.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="deps/rtl-sdr/src/tuner_r82xx.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="main.cpp" />
 		<Extensions>
 			<lib_finder disable_auto="1" />
