@@ -458,7 +458,7 @@ int main()
         {
             nlohmann::json js = nlohmann::json::parse(config);
 
-            port = js["port"];
+            port = js["root_device_port"];
 
             std::cout << "Loaded custom port " << port << std::endl;
         }
