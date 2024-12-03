@@ -43,14 +43,14 @@ There is no support for any kind of dynamic hotplugging while the daemon is runn
 
 `rtlsdr_reset_buffer` does nothing.
 
-If the daemon is stopped, and devices are unplugged and shuffled around, when restarting persistence is simply done by device index. This may result in unexpected behaviour, and there's not much I can do about it. Set `"persistence":false` if this is a problem for you
+If the daemon is stopped, and devices are unplugged and shuffled around, when restarting persistence is simply done by device index. This may result in unexpected behaviour, and there's not much I can do about it. Set `"persistence":false` if this is a problem
 
-Externally pausing the daemon may cause applications to falsely re-send requests for information, resulting in unexpected behaviour when it resumes processing old requests. If you want to disable the retry behaviour (and disable hot plugging), set `"retry":false` in the configuration for `librtlsdr_udp_config.json`.
+Externally pausing the daemon may cause applications to falsely re-send requests for information, resulting in unexpected behaviour when it resumes processing old requests. If you want to disable the retry behaviour (and disable the ability to restart the daemon while applications are running), set `"retry":false` in the configuration for `librtlsdr_udp_config.json`.
 
-No eeprom read/write.
+Eeprom read/write is not supported.
 
 # Building
 
-This project uses xmake via msys2 (specifically ucrt64) to compile on windows.
+This project uses xmake via msys2 (specifically ucrt64) to compile on windows. Simply run `xmake` to build.
 
 This was designed to be as easy to build as possible. The only dependencies are nlohmann::json, and for the daemon: additionally librtlsdr, and libusb
