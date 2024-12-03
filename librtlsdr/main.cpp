@@ -12,6 +12,7 @@
 #include <chrono>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <mutex>
 
 #define DLL_EXPORT extern "C" __declspec(dllexport)
 

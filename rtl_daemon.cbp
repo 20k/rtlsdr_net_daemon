@@ -41,7 +41,8 @@
 			<Add option="-lws2_32" />
 			<Add option="-lusb-1.0" />
 			<Add option="-lwinmm" />
-			<Add library="deps/rtl-sdr/build/src/librtlsdr.dll.a" />
+			<Add option="-lrtlsdr.dll" />
+			<Add directory="deps/rtl-sdr/build/src" />
 		</Linker>
 		<Unit filename="main.cpp" />
 		<Extensions>
