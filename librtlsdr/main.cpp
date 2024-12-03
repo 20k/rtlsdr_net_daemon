@@ -10,22 +10,60 @@
 #include <thread>
 #include <math.h>
 #include <chrono>
+#include <fstream>
 
 #define DLL_EXPORT extern "C" __declspec(dllexport)
 
 typedef struct rtlsdr_dev rtlsdr_dev_t;
 
-static FILE* get_file()
+#if 0
+static FILE* get_debug_file()
 {
     static FILE* file = fopen("./dump.txt", "a");
     return file;
 }
+#endif
 
-//#define LOG(x) fwrite(x"\n", strlen(x"\n"), 1, get_file())
+static std::string read_file(const std::string& name)
+{
+    std::ifstream t(name);
+
+    if(!t.good())
+        return "";
+
+    return std::string((std::istreambuf_iterator<char>(t)),
+                        std::istreambuf_iterator<char>());
+}
+
+uint16_t get_query_port_impl()
+{
+    std::string data = read_file("./query_port.txt");
+
+    uint16_t port = 6960;
+
+    if(data == "")
+        return port;
+
+    try{
+        port = std::stoi(data);
+    }
+    catch(...){}
+
+    return port;
+}
+
+uint16_t get_query_port()
+{
+    static uint16_t port = get_query_port_impl();
+    return port;
+}
+
+
+//#define LOG(x) fwrite(x"\n", strlen(x"\n"), 1, get_debug_file())
 
 #define LOG(x)
 #define FLOG(x)
-//#define FLOG(x) fwrite(x.c_str(), x.size(), 1, get_file())
+//#define FLOG(x) fwrite(x.c_str(), x.size(), 1, get_debug_file())
 
 static void sleep(uint64_t milliseconds)
 {

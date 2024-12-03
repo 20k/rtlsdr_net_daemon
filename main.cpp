@@ -448,7 +448,8 @@ int main()
 
     std::cout << "Found devices " << dcount << std::endl;
 
-    uint16_t port = 6962;
+    uint16_t port = 6961;
+    std::string query_port = "6960";
 
     try
     {
@@ -459,6 +460,7 @@ int main()
             nlohmann::json js = nlohmann::json::parse(config);
 
             port = js["root_device_port"];
+            query_port = std::to_string((int)js["query_port"]);
 
             std::cout << "Loaded custom port " << port << std::endl;
         }
@@ -539,7 +541,7 @@ int main()
         }).detach();
     }
 
-    sock info("6961", false);
+    sock info(query_port, false);
 
     std::jthread send_thread([&](std::stop_token tok)
     {
