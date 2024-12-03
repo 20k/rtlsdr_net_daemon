@@ -445,7 +445,8 @@ static void data_write(rtlsdr_dev_t* rctx, char type, auto what)
     get_query_sock()->write(data);
 }
 
-///do a basic retry loop on a timeout, to guarantee success if the underlying
+///do a basic retry loop on a timeout, to guarantee success if the underlying daemon dies and is rebooted
+///if i had packet numbering or something it might be more reliable
 static std::vector<char> write_read_loop(const std::vector<char>& to_write)
 {
     if(get_retry())
