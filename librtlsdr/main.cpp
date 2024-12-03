@@ -45,7 +45,7 @@ static std::string read_file(const std::string& name)
 
 std::optional<nlohmann::json> get_config_data_impl()
 {
-    std::string data = read_file("./query_port.json");
+    std::string data = read_file("./librtlsdr_udp_config.json");
 
     if(data == "")
         return std::nullopt;
