@@ -16,23 +16,30 @@
 
 typedef struct rtlsdr_dev rtlsdr_dev_t;
 
-#if 0
 static FILE* get_debug_file()
 {
-    static FILE* file = fopen("./dump.txt", "a");
+    static FILE* file = fopen("./librtlsdr_udp_error.txt", "a");
     return file;
 }
-#endif
 
 static std::string read_file(const std::string& name)
 {
-    std::ifstream t(name);
+    FILE *f = fopen(name.c_str(), "r");
 
-    if(!t.good())
+    if(f == nullptr)
         return "";
 
-    return std::string((std::istreambuf_iterator<char>(t)),
-                        std::istreambuf_iterator<char>());
+    fseek(f, 0, SEEK_END);
+    long fsize = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    std::string str;
+    str.resize(fsize);
+
+    fread(str.data(), fsize, 1, f);
+    fclose(f);
+
+    return str;
 }
 
 uint16_t get_query_port_impl()
@@ -47,7 +54,13 @@ uint16_t get_query_port_impl()
     try{
         port = std::stoi(data);
     }
-    catch(...){}
+    catch(std::exception& e)
+    {
+        std::string msg = e.what();
+        msg += "\n";
+
+        fwrite(msg.c_str(), msg.size(), 1, get_debug_file());
+    }
 
     return port;
 }
@@ -288,7 +301,7 @@ sock* query_sock2 = nullptr;
 static sock* get_query_sock()
 {
     if(query_sock2 == nullptr)
-        query_sock2 = new sock("127.0.0.1", "6961", false);
+        query_sock2 = new sock("127.0.0.1", std::to_string(get_query_port()), false);
 
     return query_sock2;
 }

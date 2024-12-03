@@ -462,7 +462,8 @@ int main()
             port = js["root_device_port"];
             query_port = std::to_string((int)js["query_port"]);
 
-            std::cout << "Loaded custom port " << port << std::endl;
+            std::cout << "Loaded custom device port start range " << port << std::endl;
+            std::cout << "Loaded custom query port " << query_port << std::endl;
         }
     }
     catch(std::exception& e)
