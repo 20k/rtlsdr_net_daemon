@@ -450,6 +450,7 @@ int main()
 
     uint16_t port = 6961;
     std::string query_port = "6960";
+    bool persistence = false;
 
     try
     {
@@ -459,11 +460,24 @@ int main()
         {
             nlohmann::json js = nlohmann::json::parse(config);
 
-            port = js["root_device_port"];
-            query_port = std::to_string((int)js["query_port"]);
+            if(js.count("root_device_port"))
+            {
+                port = js["root_device_port"];
+                std::cout << "Loaded custom device port start range " << port << std::endl;
+            }
 
-            std::cout << "Loaded custom device port start range " << port << std::endl;
-            std::cout << "Loaded custom query port " << query_port << std::endl;
+            if(js.count("query_port"))
+            {
+                query_port = std::to_string((int)js["query_port"]);
+                std::cout << "Loaded custom query port " << query_port << std::endl;
+            }
+
+            if(js.count("persistence"))
+            {
+                persistence = js["persistence"];
+                std::cout << "Persistance set to " << persistence << std::endl;
+            }
+
         }
     }
     catch(std::exception& e)
@@ -529,7 +543,8 @@ int main()
         }
     };
 
-    load();
+    if(persistence)
+        load();
 
     for(int i=0; i < (int)dcount; i++)
     {

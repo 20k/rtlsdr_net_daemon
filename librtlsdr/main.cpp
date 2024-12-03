@@ -11,6 +11,7 @@
 #include <math.h>
 #include <chrono>
 #include <fstream>
+#include <nlohmann/json.hpp>
 
 #define DLL_EXPORT extern "C" __declspec(dllexport)
 
@@ -42,17 +43,15 @@ static std::string read_file(const std::string& name)
     return str;
 }
 
-uint16_t get_query_port_impl()
+std::optional<nlohmann::json> get_config_data_impl()
 {
-    std::string data = read_file("./query_port.txt");
-
-    uint16_t port = 6960;
+    std::string data = read_file("./query_port.json");
 
     if(data == "")
-        return port;
+        return std::nullopt;
 
     try{
-        port = std::stoi(data);
+        return nlohmann::json::parse(data);
     }
     catch(std::exception& e)
     {
@@ -60,6 +59,26 @@ uint16_t get_query_port_impl()
         msg += "\n";
 
         fwrite(msg.c_str(), msg.size(), 1, get_debug_file());
+    }
+
+    return std::nullopt;
+}
+
+std::optional<nlohmann::json> get_config_data()
+{
+    static auto dat = get_config_data_impl();
+    return dat;
+}
+
+uint16_t get_query_port_impl()
+{
+    uint16_t port = 6960;
+
+    auto cfg_opt = get_config_data();
+
+    if(cfg_opt && cfg_opt->count("query_port"))
+    {
+        port = (*cfg_opt)["query_port"];
     }
 
     return port;
@@ -71,6 +90,25 @@ uint16_t get_query_port()
     return port;
 }
 
+bool get_retry_impl()
+{
+    bool retry = true;
+
+    auto cfg_opt = get_config_data();
+
+    if(cfg_opt && cfg_opt->count("retry"))
+    {
+        retry = (*cfg_opt)["retry"];
+    }
+
+    return retry;
+}
+
+bool get_retry()
+{
+    static auto d = get_retry_impl();
+    return d;
+}
 
 //#define LOG(x) fwrite(x"\n", strlen(x"\n"), 1, get_debug_file())
 
@@ -410,16 +448,25 @@ static void data_write(rtlsdr_dev_t* rctx, char type, auto what)
 ///do a basic retry loop on a timeout, to guarantee success if the underlying
 static std::vector<char> write_read_loop(const std::vector<char>& to_write)
 {
-    bool any_data = false;
+    if(get_retry())
+    {
+        bool any_data = false;
 
-    while(!any_data)
+        while(!any_data)
+        {
+            get_query_sock()->write(to_write);
+
+            any_data = get_query_sock()->can_read(10);
+        }
+
+        return get_query_sock()->read();
+    }
+    else
     {
         get_query_sock()->write(to_write);
 
-        any_data = get_query_sock()->can_read(10);
+        return get_query_sock()->read();
     }
-
-    return get_query_sock()->read();
 }
 
 static std::vector<char> query_read_eidx(uint32_t index, char type)
