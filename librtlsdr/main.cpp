@@ -7,15 +7,15 @@
 #include <vector>
 #include <optional>
 #include <atomic>
-#include <SFML/System/Sleep.hpp>
 #include <thread>
 #include <math.h>
+#include <chrono>
 
 #define DLL_EXPORT extern "C" __declspec(dllexport)
 
 typedef struct rtlsdr_dev rtlsdr_dev_t;
 
-FILE* get_file()
+static FILE* get_file()
 {
     static FILE* file = fopen("./dump.txt", "a");
     return file;
@@ -26,6 +26,19 @@ FILE* get_file()
 #define LOG(x)
 #define FLOG(x)
 //#define FLOG(x) fwrite(x.c_str(), x.size(), 1, get_file())
+
+static void sleep(uint64_t milliseconds)
+{
+    #ifdef _WIN32
+    timeBeginPeriod(1);
+    #endif
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+
+    #ifdef _WIN32
+    timeEndPeriod(1);
+    #endif
+}
 
 struct sock_view
 {
@@ -45,7 +58,7 @@ struct sock_view
     }
 };
 
-void sendall(SOCKET s, sock_view sv, const std::span<const char>& data)
+static void sendall(SOCKET s, sock_view sv, const std::span<const char>& data)
 {
     int len = sendto(s, data.data(), data.size(), 0, sv.addr, sv.len);
 
@@ -53,7 +66,7 @@ void sendall(SOCKET s, sock_view sv, const std::span<const char>& data)
     assert(len == (int)data.size());
 }
 
-std::vector<char> readall(SOCKET s, sock_view addr)
+static std::vector<char> readall(SOCKET s, sock_view addr)
 {
     std::vector<char> bufsize;
     bufsize.resize(10000);
@@ -197,7 +210,7 @@ struct sock
 };
 
 template<typename T>
-std::optional<T> read_pop(std::vector<char>& in)
+static std::optional<T> read_pop(std::vector<char>& in)
 {
     if(in.size() < sizeof(T))
         return std::nullopt;
@@ -208,7 +221,7 @@ std::optional<T> read_pop(std::vector<char>& in)
     return ret;
 }
 
-void add(std::vector<char>& in, int v)
+static void add(std::vector<char>& in, int v)
 {
     auto len = in.size();
 
@@ -217,7 +230,7 @@ void add(std::vector<char>& in, int v)
     memcpy(in.data() + len, &v, sizeof(int));
 }
 
-void add(std::vector<char>& in, uint32_t v)
+static void add(std::vector<char>& in, uint32_t v)
 {
     auto len = in.size();
 
@@ -226,7 +239,7 @@ void add(std::vector<char>& in, uint32_t v)
     memcpy(in.data() + len, &v, sizeof(v));
 }
 
-void add(std::vector<char>& in, const std::vector<int> v)
+static void add(std::vector<char>& in, const std::vector<int> v)
 {
     for(auto& i : v)
         add(in, i);
@@ -234,7 +247,7 @@ void add(std::vector<char>& in, const std::vector<int> v)
 
 sock* query_sock2 = nullptr;
 
-sock* get_query_sock()
+static sock* get_query_sock()
 {
     if(query_sock2 == nullptr)
         query_sock2 = new sock("127.0.0.1", "6961", false);
@@ -282,7 +295,7 @@ struct context
                     }
                 }
 
-                sf::sleep(sf::milliseconds(1));
+                sleep(1);
             }
 
             {
@@ -328,7 +341,7 @@ struct context
     }
 };
 
-void data_write(rtlsdr_dev_t* rctx, char type, auto what)
+static void data_write(rtlsdr_dev_t* rctx, char type, auto what)
 {
     assert(rctx);
 
@@ -344,7 +357,7 @@ void data_write(rtlsdr_dev_t* rctx, char type, auto what)
 }
 
 ///do a basic retry loop on a timeout, to guarantee success if the underlying
-std::vector<char> write_read_loop(const std::vector<char>& to_write)
+static std::vector<char> write_read_loop(const std::vector<char>& to_write)
 {
     bool any_data = false;
 
@@ -358,7 +371,7 @@ std::vector<char> write_read_loop(const std::vector<char>& to_write)
     return get_query_sock()->read();
 }
 
-std::vector<char> query_read_eidx(uint32_t index, char type)
+static std::vector<char> query_read_eidx(uint32_t index, char type)
 {
     std::vector<char> to_write{type};
 
@@ -367,7 +380,7 @@ std::vector<char> query_read_eidx(uint32_t index, char type)
     return write_read_loop(to_write);
 }
 
-std::vector<char> query_read(rtlsdr_dev_t* rctx, char type)
+static std::vector<char> query_read(rtlsdr_dev_t* rctx, char type)
 {
     assert(rctx);
 
@@ -819,7 +832,7 @@ DLL_EXPORT int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, v
         }
         else
         {
-            sf::sleep(sf::milliseconds(1));
+            sleep(1);
         }
     }
 

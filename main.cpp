@@ -6,11 +6,23 @@
 #include <assert.h>
 #include <thread>
 #include <chrono>
-#include <SFML/System/Sleep.hpp>
 #include <set>
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <span>
+
+void sleep(uint64_t milliseconds)
+{
+    #ifdef _WIN32
+    timeBeginPeriod(1);
+    #endif
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+
+    #ifdef _WIN32
+    timeEndPeriod(1);
+    #endif
+}
 
 struct device
 {
@@ -535,7 +547,7 @@ int main()
             }
 
             if(all_zero)
-                sf::sleep(sf::milliseconds(1));
+                sleep(1);
         }
     });
 
@@ -587,7 +599,7 @@ int main()
         }
 
         if(all_dat.size() == 0)
-            sf::sleep(sf::milliseconds(1));
+            sleep(1);
 
         for(auto& [fmt, from] : all_dat)
         {
