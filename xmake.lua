@@ -16,8 +16,6 @@ set_optimize("fastest")
 
 if is_plat("windows", "mingw", "msys") then
     add_syslinks("ws2_32", "winmm")
-else
-    add_syslinks("rtlsdr")
 end
 
 if is_plat("msys", "mingw") then
