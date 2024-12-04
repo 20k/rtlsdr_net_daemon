@@ -24,7 +24,7 @@ rtlsdr_daemon accepts a `config.json` file that looks as follows:
 }
 ```
 
-The root device port may be freely modified. If you want to change the query port, you'll also need to add a configuration file in the same folder as your application's to configure the custom DLL
+The root device port may be freely modified. If you want to change the query port, you'll also need to add a configuration file in the same folder as your application's to configure the custom DLL.
 
 This is called `librtlsdr_udp_config.json` which looks as follows:
 
@@ -37,9 +37,9 @@ This is called `librtlsdr_udp_config.json` which looks as follows:
 
 # Compatibility
 
-I've tested this with sdr++ and sdr#, as well as custom applications. Sharing devices works better than I expected, but applications aren't really built to have things like frequency or gain swapped out from under their feet, so there may be some UI problems here and there
+I've tested this with sdr++ and sdr#, as well as custom applications. Sharing devices works better than I expected, but applications aren't really built to have things like frequency or gain swapped out from under their feet, so there may be some UI problems here and there.
 
-This application was only designed for sharing control on the same computer, and was not designed to be directly exposed to the internet. I wouldn't recommend it, as it uses UDP and will likely drop commands, as well as generally being unsafe - rtl_tcp is likely a better bet there, or building a custom web frontend. Give me a shout if you have a use case for not using broadcast ports
+This application was only designed for sharing control on the same computer, and was not designed to be directly exposed to the internet. I wouldn't recommend it, as it uses UDP and will likely drop commands, as well as generally being unsafe - rtl_tcp is likely a better bet there, or building a custom web frontend. Give me a shout if you have a use case for not using broadcast ports.
 
 # Support
 
