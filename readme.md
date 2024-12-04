@@ -1,6 +1,6 @@
 # Installation
 
-1. Overwrite (backup first!) the old rtlsdr.dll/librtlsdr.dll bundled with an application, with the dlls provided in the latest release. These live in /dll
+1. Overwrite (backup first!) the old rtlsdr.dll/librtlsdr.dll bundled with an application, with the dlls provided in the latest release. You can find these under `dll`
 2. Start up the daemon rtlsdr_daemon.exe
 3. That's it, everything should work
 
