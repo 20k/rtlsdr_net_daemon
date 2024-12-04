@@ -22,7 +22,7 @@ if is_plat("msys", "mingw") then
     add_ldflags("-static -static-libgcc -static-libstdc++")
 end
 
-target("rtl_daemon")
+target("rtlsdr_daemon")
     set_kind("binary")
     add_files("deps/rtl-sdr/src/tuner_e4k.c")
     add_files("deps/rtl-sdr/src/tuner_fc0012.c")
