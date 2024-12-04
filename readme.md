@@ -1,8 +1,8 @@
-#Installation
+# Installation
 
 Overwrite (backup first!) the old rtlsdr.dll/librtlsdr.dll bundled with an application, with the ones provided under releases (in the dll folder), and then start up the daemon (rtlsdr_daemon.exe). Both a 32-bit, and 64-bit dll are provided (rtlsdr.dll, and librtlsdr.dll respectively)
 
-#Description
+# Description
 
 I was tired of only one application being able to use an rtlsdr at a time, so this is a drop in library replacement that automatically enables sharing of your rtlsdr between multiple applications - both control (eg setting the frequency), and reading data. Any application using the custom DLL will automagically work. There is also support for hot swapping of the underlying device: You may shut down and restart the daemon while an application is running, and there is even some very limited persistence of rtlsdr state (bandwidth, frequency, gain, and sample rate) between reboots.
 
@@ -10,7 +10,7 @@ I was tired of only one application being able to use an rtlsdr at a time, so th
 
 This application relies on opening a number of UDP ports: Firstly, a query port which is used to set and request information about a device. This defaults to 6960. Secondly, one broadcast port per rtlsdr is used, starting at 6961 and incrementing upwards with every device (eg 6961, 6962, 6963 if you have three).
 
-rtl_daemon accepts a `config.json` file that looks as follows:
+rtlsdr_daemon accepts a `config.json` file that looks as follows:
 
 ```json
 {
