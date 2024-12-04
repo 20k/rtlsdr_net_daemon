@@ -1,10 +1,10 @@
 # Installation
 
-1. Overwrite (backup first!) the old rtlsdr.dll/librtlsdr.dll bundled with an application, with the dlls provided in the latest release. You can find these under `dll`
-2. Start up the daemon rtlsdr_daemon.exe
-3. That's it, everything should work
+1. Overwrite (backup first!) the old rtlsdr.dll/librtlsdr.dll bundled with an application, with the dlls provided in the latest release. You can find these under `dll`.
+2. Start up the daemon rtlsdr_daemon.exe.
+3. That's it, everything should work!
 
-Both a 32-bit, and 64-bit replacement dll are provided (rtlsdr.dll, and librtlsdr.dll respectively)
+Both a 32-bit, and 64-bit replacement dll are provided (rtlsdr.dll, and librtlsdr.dll respectively). You'll need to replace the dll's for every application that you want to support via this method.
 
 # Description
 
@@ -63,8 +63,14 @@ Externally pausing the daemon may cause applications to falsely re-send requests
 
 Eeprom read/write is not supported.
 
+# Development
+
+As-is currently this project and meets everything I needed from building it, so please create an issue if you want additional features, as there's nothing on the todo list currently. If you find a bug, please report it or file a PR, and I'll fix it.
+
+Linux support is something I'd like to add, and performance on low power hardware is completely untested and could likely be improved.
+
 # Building
 
 This project uses xmake via msys2 (specifically ucrt64) to compile on windows. Simply run `xmake` to build.
 
-This was designed to be as easy to build as possible. The only dependencies are nlohmann::json, and for the daemon: additionally librtlsdr, and libusb
+This was designed to be as easy to build as possible. The only dependencies are nlohmann::json (provided), and for the daemon: additionally librtlsdr, and libusb. Librtlsdr is added as a submodule here, so checkout with submodules if you want to build with the default xmake configuration.
