@@ -1,6 +1,10 @@
 # Installation
 
-Overwrite (backup first!) the old rtlsdr.dll/librtlsdr.dll bundled with an application, with the ones provided under releases (in the dll folder), and then start up the daemon (rtlsdr_daemon.exe). Both a 32-bit, and 64-bit dll are provided (rtlsdr.dll, and librtlsdr.dll respectively)
+1. Overwrite (backup first!) the old rtlsdr.dll/librtlsdr.dll bundled with an application, with the dlls provided in the latest release. These live in /dll
+2. Start up the daemon rtlsdr_daemon.exe
+3. That's it, everything should work
+
+Both a 32-bit, and 64-bit replacement dll are provided (rtlsdr.dll, and librtlsdr.dll respectively)
 
 # Description
 
