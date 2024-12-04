@@ -786,8 +786,8 @@ int main()
             }
             if(cmd == 0x05)
                 rtlsdr_set_freq_correction(dev.v, param);
-            if(cmd == 0x06)
-            {}
+            if(cmd == 0x06 && fmt.param2)
+                rtlsdr_set_tuner_if_gain(dev.v, *fmt.param, *fmt.param2);
             if(cmd == 0x07)
                 rtlsdr_set_testmode(dev.v, param);
             if(cmd == 0x08)
@@ -817,8 +817,6 @@ int main()
             if(cmd == 0x29)
                 rtlsdr_set_testmode(dev.v, *fmt.param);
 
-            if(cmd == 0x30 && fmt.param2)
-                rtlsdr_set_tuner_if_gain(dev.v, *fmt.param, *fmt.param2);
         }
     }
 

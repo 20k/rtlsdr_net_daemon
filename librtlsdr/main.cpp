@@ -776,7 +776,7 @@ DLL_EXPORT int rtlsdr_set_tuner_if_gain(rtlsdr_dev_t *dev, int stage, int gain)
 {
     LOG("setifg");
 
-    data_write(dev, 0x30, std::vector<int>{stage, gain});
+    data_write(dev, 0x06, std::vector<int>{stage, gain});
 
     return 0;
 }
