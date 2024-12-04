@@ -53,7 +53,8 @@ std::optional<nlohmann::json> get_config_data_impl()
     if(data == "")
         return std::nullopt;
 
-    try{
+    try
+    {
         return nlohmann::json::parse(data);
     }
     catch(std::exception& e)
@@ -121,15 +122,15 @@ bool get_retry()
 
 static void sleep(uint64_t milliseconds)
 {
-    #ifdef _WIN32
+#ifdef _WIN32
     timeBeginPeriod(1);
-    #endif
+#endif
 
     std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
 
-    #ifdef _WIN32
+#ifdef _WIN32
     timeEndPeriod(1);
-    #endif
+#endif
 }
 
 struct sock_view
@@ -181,7 +182,7 @@ struct sock
 
     sock(const std::string& address, const std::string& port, bool _broadcast) : broadcast(_broadcast)
     {
-        #ifdef _WIN32
+#ifdef _WIN32
         WSADATA wsa_data;
 
         if(auto result = WSAStartup(MAKEWORD(2,2), &wsa_data); result != 0)
@@ -189,7 +190,7 @@ struct sock
             printf("WSAStartup failed: %d\n", result);
             throw std::runtime_error("WSA Failure");
         }
-        #endif
+#endif
 
         addrinfo hints = {};
         hints.ai_family = AF_INET;
@@ -204,10 +205,10 @@ struct sock
 
         if(int result = getaddrinfo(node, port.c_str(), &hints, &addr); result != 0)
         {
-            #ifdef _WIN32
+#ifdef _WIN32
             printf("Error at socket(): %d\n", WSAGetLastError());
             WSACleanup();
-            #endif
+#endif
             throw std::runtime_error("Sock Error");
         }
 
@@ -234,13 +235,13 @@ struct sock
                     continue;
             }
 
-            #ifdef _WIN32
-            #define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR, 12)
+#ifdef _WIN32
+#define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR, 12)
 
             bool report_errors = false;
             DWORD bytes = 0;
             WSAIoctl(s, SIO_UDP_CONNRESET, &report_errors, sizeof(report_errors), nullptr, 0, &bytes, nullptr, nullptr);
-            #endif
+#endif
 
             break;
         }
@@ -253,11 +254,11 @@ struct sock
 
     void stop()
     {
-        #ifdef _WIN32
+#ifdef _WIN32
         closesocket(s);
-        #else
+#else
         close(s);
-        #endif
+#endif
     }
 
     void write(const std::vector<char>& data)
@@ -513,10 +514,7 @@ DLL_EXPORT const char* rtlsdr_get_device_name(uint32_t index)
     return leaked->c_str();
 }
 
-DLL_EXPORT int rtlsdr_get_device_usb_strings(uint32_t index,
-					     char* m,
-					     char* p,
-					     char* s)
+DLL_EXPORT int rtlsdr_get_device_usb_strings(uint32_t index, char* m, char* p, char* s)
 {
     LOG("Device usb strings");
 
@@ -560,27 +558,27 @@ DLL_EXPORT int rtlsdr_get_index_by_serial(const char* serial)
 {
     LOG("Idx By Serial");
 
-	if(serial == nullptr)
-		return -1;
+    if(serial == nullptr)
+        return -1;
 
-	uint32_t count = rtlsdr_get_device_count();
+    uint32_t count = rtlsdr_get_device_count();
 
-	if(count == 0)
-		return -2;
+    if(count == 0)
+        return -2;
 
     std::string sserial(serial);
 
-	for(uint32_t i = 0; i < count; i++)
+    for(uint32_t i = 0; i < count; i++)
     {
         char s[257] = {};
 
-		rtlsdr_get_device_usb_strings(i, nullptr, nullptr, s);
+        rtlsdr_get_device_usb_strings(i, nullptr, nullptr, s);
 
-		if(sserial == std::string(s))
-			return i;
-	}
+        if(sserial == std::string(s))
+            return i;
+    }
 
-	return -3;
+    return -3;
 }
 
 DLL_EXPORT int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index)
@@ -709,7 +707,8 @@ DLL_EXPORT int rtlsdr_get_freq_correction(rtlsdr_dev_t *dev)
     return read_pop<int>(result).value();
 }
 
-enum rtlsdr_tuner {
+enum rtlsdr_tuner
+{
     T0 = 0,
     T1 = 1,
     T2 = 2,
@@ -972,6 +971,6 @@ DLL_EXPORT int rtlsdr_set_bias_tee_gpio(rtlsdr_dev_t *dev, int gpio, int on)
 {
     LOG("settee2");
 
-    data_write(dev, 0x28, std::vector<int>{gpio, on});
+    data_write(dev, 0x28, std::vector<int> {gpio, on});
     return 0;
 }
