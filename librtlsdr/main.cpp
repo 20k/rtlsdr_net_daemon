@@ -718,7 +718,6 @@ enum rtlsdr_tuner
     T6 = 6,
 };
 
-///todo: dome
 DLL_EXPORT rtlsdr_tuner rtlsdr_get_tuner_type(rtlsdr_dev_t *dev)
 {
     LOG("gettt");
