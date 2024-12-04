@@ -816,6 +816,9 @@ int main()
 
             if(cmd == 0x29)
                 rtlsdr_set_testmode(dev.v, *fmt.param);
+
+            if(cmd == 0x30 && fmt.param2)
+                rtlsdr_set_tuner_if_gain(dev.v, *fmt.param, *fmt.param2);
         }
     }
 
